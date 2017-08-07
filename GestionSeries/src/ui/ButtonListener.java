@@ -28,6 +28,7 @@ public class ButtonListener implements java.awt.event.ActionListener {
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		// Si c'est le bouton de scan de dossier qui a été déclenché
+
 		if (e.getSource().equals(app.btnScannerDossier)) {
 			JFileChooser directoryChooser = new JFileChooser();
 			directoryChooser.setCurrentDirectory(new java.io.File("Z:\\DL\\Temp"));
