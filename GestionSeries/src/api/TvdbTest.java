@@ -1,5 +1,9 @@
 package api;
 
+import java.io.IOException;
+
+import org.apache.http.ParseException;
+
 public class TvdbTest {
 
 	private static final String API_KEY = "D4858E1F5CC604F8";
@@ -8,7 +12,13 @@ public class TvdbTest {
 
 	public static void main(String[] args) {
 		TvdbEndpoint tvdb = new TvdbEndpoint(API_KEY, USERNAME, USER_KEY);
-		tvdb.login();
+		try {
+			tvdb.login();
+			System.out.println();
+		} catch (ParseException | IOException | org.json.simple.parser.ParseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 }
