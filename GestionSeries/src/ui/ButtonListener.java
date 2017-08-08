@@ -89,7 +89,7 @@ public class ButtonListener implements java.awt.event.ActionListener {
 				List<String> titles = Arrays.asList(clipboardContent.split("\n"));
 				int row = app.table.getSelectedRows()[0];
 				for (String title : titles) {
-					app.itemList.setEpisodeName((String) app.table.getValueAt(row++, 0), title);
+					app.itemList.setEpisodeName((String) app.table.getValueAt(row++, 1), title);
 				}
 				app.btnNewName.setEnabled(true);
 			}

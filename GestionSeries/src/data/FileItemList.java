@@ -31,7 +31,7 @@ public class FileItemList extends ArrayList<FileItem> {
 		for (int row = 0; row < size(); row++) {
 			if (get(row).originalName.equals(originalName)) {
 				get(row).episodeName = episodeName;
-				tableModel.fireTableCellUpdated(row, 3);
+				tableModel.fireTableCellUpdated(row, 5);
 				return;
 			}
 		}
