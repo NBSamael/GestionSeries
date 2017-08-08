@@ -15,17 +15,22 @@ import org.apache.http.util.EntityUtils;
 public class TvdbEndpoint {
 
 	private static final String API = "https://api.thetvdb.com/";
+	private static final String API_LOGIN = API + "login";
 
-	public static void main(String[] args) {
-		new TvdbEndpoint().login();
+	private String API_KEY;
+	private String USER_KEY;
+	private String USERNAME;
+
+	public TvdbEndpoint(String apiKey, String username, String userKey) {
+		API_KEY = apiKey;
+		USERNAME = username;
+		USER_KEY = userKey;
 	}
 
 	public void login() {
-		String loginUrl = API + "login";
 		try (CloseableHttpClient httpclient = HttpClients.createDefault()) {
-			HttpPost postRequest = new HttpPost(loginUrl);
-			String loginString = "{\"apikey\":\"D4858E1F5CC604F8\",\"username\":\"mr_flibble\",\"userkey\":\"ECF8D275D64FAADF\"}";
-			postRequest.setEntity(new StringEntity(loginString));
+			HttpPost postRequest = new HttpPost(API_LOGIN);
+			postRequest.setEntity(new StringEntity(JSONUtils.getLogin(API_KEY, USERNAME, USER_KEY).toJSONString()));
 			postRequest.setHeader("Content-Type", "application/json");
 			postRequest.setHeader("Accept", "application/json");
 			System.out.println("Executing request " + postRequest.getRequestLine());
