@@ -2,11 +2,13 @@ package api;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.util.List;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.ParseException;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.StringEntity;
@@ -19,6 +21,7 @@ public class TvdbEndpoint {
 
 	private static final String API = "https://api.thetvdb.com/";
 	private static final String API_LOGIN = API + "login";
+	private static final String API_SEARCH = API + "search/series";
 
 	private String API_KEY;
 	private String USER_KEY;
@@ -38,6 +41,14 @@ public class TvdbEndpoint {
 		postRequest.setHeader("Content-Type", "application/json");
 		postRequest.setHeader("Accept", "application/json");
 		return postRequest;
+	}
+
+	private HttpGet buildGetRequest(String uri) {
+		HttpGet getRequest = new HttpGet(uri);
+		getRequest.setHeader("Content-Type", "application/json");
+		getRequest.setHeader("Accept", "application/json");
+		getRequest.setHeader("Authorization", "Bearer " + jwtToken);
+		return getRequest;
 	}
 
 	private String execute(HttpUriRequest request) throws ParseException, IOException {
@@ -61,5 +72,13 @@ public class TvdbEndpoint {
 		String jsonResponse = execute(postRequest);
 		jwtToken = JSONUtils.extractToken(jsonResponse);
 		System.out.println("Token " + jwtToken + " stored");
+	}
+
+	public List<TvdbSerie> searchByName(String name)
+			throws ParseException, IOException, org.json.simple.parser.ParseException {
+		String searchUri = API_SEARCH + "?name=" + name;
+		HttpGet searchRequest = buildGetRequest(searchUri);
+		String response = execute(searchRequest);
+		return JSONUtils.extractSeries(response);
 	}
 }

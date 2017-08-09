@@ -1,6 +1,7 @@
 package api;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.apache.http.ParseException;
 
@@ -14,7 +15,24 @@ public class TvdbTest {
 		TvdbEndpoint tvdb = new TvdbEndpoint(API_KEY, USERNAME, USER_KEY);
 		try {
 			tvdb.login();
-			System.out.println();
+			List<TvdbSerie> series = tvdb.searchByName("batman");
+			for (TvdbSerie s : series) {
+				System.out.println(s.seriesName + " - " + s.status);
+			}
+
+			series = tvdb.searchByName("doctor");
+			for (TvdbSerie s : series) {
+				System.out.println(s.seriesName + " - " + s.status);
+			}
+
+			series = tvdb.searchByName("stargate");
+			for (TvdbSerie s : series) {
+				System.out.println(s.seriesName + " - " + s.status);
+			}
+
+			// TODO : handle exceptions
+			// series = tvdb.searchByName("azeaadadz");
+
 		} catch (ParseException | IOException | org.json.simple.parser.ParseException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
