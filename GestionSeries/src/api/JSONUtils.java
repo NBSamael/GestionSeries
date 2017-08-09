@@ -47,4 +47,36 @@ public class JSONUtils {
 		}
 		return series;
 	}
+
+	public static TvdbSeriesEpisodes extractEpisodes(String jsonResponse) throws ParseException {
+		TvdbSeriesEpisodes episodes = new TvdbSeriesEpisodes();
+		episodes.tvdbBasicEpisodes = new ArrayList<>();
+		episodes.tvdblinks = new TvdbLink();
+
+		JSONObject episodesArray = (JSONObject) new JSONParser().parse(jsonResponse);
+
+		for (Object episode : (JSONArray) episodesArray.get("data")) {
+			JSONObject episodeJson = (JSONObject) episode;
+			TvdbBasicEpisode tvdbBasicEpisode = new TvdbBasicEpisode();
+			tvdbBasicEpisode.absoluteNumber = (Long) episodeJson.get("absoluteNumber");
+			tvdbBasicEpisode.airedEpisodeNumber = (Long) episodeJson.get("airedEpisodeNumber");
+			tvdbBasicEpisode.airedSeason = (Long) episodeJson.get("airedSeason");
+			tvdbBasicEpisode.dvdEpisodeNumber = (Long) episodeJson.get("dvdEpisodeNumber");
+			tvdbBasicEpisode.dvdSeason = (Long) episodeJson.get("dvdSeason");
+			tvdbBasicEpisode.episodeName = (String) episodeJson.get("episodeName");
+			tvdbBasicEpisode.firstAired = (String) episodeJson.get("firstAired");
+			tvdbBasicEpisode.id = (Long) episodeJson.get("id");
+			tvdbBasicEpisode.lastUpdated = (Long) episodeJson.get("lastUpdated");
+			tvdbBasicEpisode.overview = (String) episodeJson.get("overview");
+			episodes.tvdbBasicEpisodes.add(tvdbBasicEpisode);
+		}
+
+		JSONObject linksJson = (JSONObject) episodesArray.get("links");
+		episodes.tvdblinks.first = (Long) linksJson.get("first");
+		episodes.tvdblinks.last = (Long) linksJson.get("last");
+		episodes.tvdblinks.next = (Long) linksJson.get("next");
+		episodes.tvdblinks.next = (Long) linksJson.get("prev");
+
+		return episodes;
+	}
 }

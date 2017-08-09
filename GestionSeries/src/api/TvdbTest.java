@@ -17,18 +17,26 @@ public class TvdbTest {
 			tvdb.login();
 			List<TvdbSerie> series = tvdb.searchByName("batman");
 			for (TvdbSerie s : series) {
-				System.out.println(s.seriesName + " - " + s.status);
+				System.out.println(s.id + " : \t" + s.seriesName + " (" + s.firstAired + ") - " + s.status);
+
+				if ("The Batman".equals(s.seriesName)) {
+					TvdbSeriesEpisodes episodes = tvdb.getEpisodesList(s.id);
+					for (TvdbBasicEpisode tvdbBasicEpisode : episodes.tvdbBasicEpisodes) {
+						System.out.println("S" + tvdbBasicEpisode.airedSeason + "E"
+								+ tvdbBasicEpisode.airedEpisodeNumber + " : " + tvdbBasicEpisode.episodeName);
+					}
+				}
 			}
 
-			series = tvdb.searchByName("doctor");
-			for (TvdbSerie s : series) {
-				System.out.println(s.seriesName + " - " + s.status);
-			}
-
-			series = tvdb.searchByName("stargate");
-			for (TvdbSerie s : series) {
-				System.out.println(s.seriesName + " - " + s.status);
-			}
+			// series = tvdb.searchByName("doctor");
+			// for (TvdbSerie s : series) {
+			// System.out.println(s.seriesName + " - " + s.status);
+			// }
+			//
+			// series = tvdb.searchByName("stargate");
+			// for (TvdbSerie s : series) {
+			// System.out.println(s.seriesName + " - " + s.status);
+			// }
 
 			// TODO : handle exceptions
 			// series = tvdb.searchByName("azeaadadz");

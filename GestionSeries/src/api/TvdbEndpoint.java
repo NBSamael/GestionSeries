@@ -22,6 +22,7 @@ public class TvdbEndpoint {
 	private static final String API = "https://api.thetvdb.com/";
 	private static final String API_LOGIN = API + "login";
 	private static final String API_SEARCH = API + "search/series";
+	private static final String API_EPISODES_LIST = API + "series/";
 
 	private String API_KEY;
 	private String USER_KEY;
@@ -80,5 +81,16 @@ public class TvdbEndpoint {
 		HttpGet searchRequest = buildGetRequest(searchUri);
 		String response = execute(searchRequest);
 		return JSONUtils.extractSeries(response);
+	}
+
+	public TvdbSeriesEpisodes getEpisodesList(Long tvShowId)
+			throws ParseException, IOException, org.json.simple.parser.ParseException {
+		String searchUri = API_EPISODES_LIST + tvShowId + "/episodes";
+		HttpGet searchRequest = buildGetRequest(searchUri);
+		String response = execute(searchRequest);
+
+		// TODO : Gérer la pagination pour récupérer tous les résultats
+
+		return JSONUtils.extractEpisodes(response);
 	}
 }
