@@ -19,9 +19,9 @@ public class TvdbTest {
 			for (TvdbSerie s : series) {
 				System.out.println(s.id + " : \t" + s.seriesName + " (" + s.firstAired + ") - " + s.status);
 
-				if ("The Batman".equals(s.seriesName)) {
+				if ("Batman: The Animated Series".equals(s.seriesName)) {
 					TvdbSeriesEpisodes episodes = tvdb.getEpisodesList(s.id);
-					for (TvdbBasicEpisode tvdbBasicEpisode : episodes.tvdbBasicEpisodes) {
+					for (TvdbBasicEpisode tvdbBasicEpisode : episodes.tvdbBasicEpisodes.values()) {
 						System.out.println("S" + tvdbBasicEpisode.airedSeason + "E"
 								+ tvdbBasicEpisode.airedEpisodeNumber + " : " + tvdbBasicEpisode.episodeName);
 					}

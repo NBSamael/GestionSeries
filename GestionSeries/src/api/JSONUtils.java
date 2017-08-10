@@ -1,6 +1,7 @@
 package api;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import org.json.simple.JSONArray;
@@ -48,14 +49,15 @@ public class JSONUtils {
 		return series;
 	}
 
-	public static TvdbSeriesEpisodes extractEpisodes(String jsonResponse) throws ParseException {
+	public static TvdbSeriesEpisodes extractEpisodes(String frenchResponse, String englishResponse)
+			throws ParseException {
 		TvdbSeriesEpisodes episodes = new TvdbSeriesEpisodes();
-		episodes.tvdbBasicEpisodes = new ArrayList<>();
+		episodes.tvdbBasicEpisodes = new HashMap<>();
 		episodes.tvdblinks = new TvdbLink();
 
-		JSONObject episodesArray = (JSONObject) new JSONParser().parse(jsonResponse);
+		JSONObject englishEpisodesArray = (JSONObject) new JSONParser().parse(englishResponse);
 
-		for (Object episode : (JSONArray) episodesArray.get("data")) {
+		for (Object episode : (JSONArray) englishEpisodesArray.get("data")) {
 			JSONObject episodeJson = (JSONObject) episode;
 			TvdbBasicEpisode tvdbBasicEpisode = new TvdbBasicEpisode();
 			tvdbBasicEpisode.absoluteNumber = (Long) episodeJson.get("absoluteNumber");
@@ -68,10 +70,24 @@ public class JSONUtils {
 			tvdbBasicEpisode.id = (Long) episodeJson.get("id");
 			tvdbBasicEpisode.lastUpdated = (Long) episodeJson.get("lastUpdated");
 			tvdbBasicEpisode.overview = (String) episodeJson.get("overview");
-			episodes.tvdbBasicEpisodes.add(tvdbBasicEpisode);
+			episodes.tvdbBasicEpisodes.put(tvdbBasicEpisode.id, tvdbBasicEpisode);
 		}
 
-		JSONObject linksJson = (JSONObject) episodesArray.get("links");
+		JSONObject frenchEpisodesArray = (JSONObject) new JSONParser().parse(frenchResponse);
+		for (Object episode : (JSONArray) frenchEpisodesArray.get("data")) {
+			JSONObject episodeJson = (JSONObject) episode;
+			Long id = (Long) episodeJson.get("id");
+			String episodeName = (String) episodeJson.get("episodeName");
+			String overview = (String) episodeJson.get("overview");
+			if (episodeName != null) {
+				episodes.tvdbBasicEpisodes.get(id).episodeName = episodeName;
+			}
+			if (overview != null) {
+				episodes.tvdbBasicEpisodes.get(id).overview = overview;
+			}
+		}
+
+		JSONObject linksJson = (JSONObject) englishEpisodesArray.get("links");
 		episodes.tvdblinks.first = (Long) linksJson.get("first");
 		episodes.tvdblinks.last = (Long) linksJson.get("last");
 		episodes.tvdblinks.next = (Long) linksJson.get("next");

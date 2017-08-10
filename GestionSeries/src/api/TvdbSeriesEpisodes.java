@@ -1,8 +1,8 @@
 package api;
 
-import java.util.List;
+import java.util.Map;
 
 public class TvdbSeriesEpisodes {
-	public List<TvdbBasicEpisode> tvdbBasicEpisodes;
+	public Map<Long, TvdbBasicEpisode> tvdbBasicEpisodes;
 	public TvdbLink tvdblinks;
 }
