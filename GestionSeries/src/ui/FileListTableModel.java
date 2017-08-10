@@ -1,5 +1,8 @@
 package ui;
 
+import java.util.Set;
+import java.util.TreeSet;
+
 import javax.swing.DefaultCellEditor;
 import javax.swing.JCheckBox;
 import javax.swing.JTable;
@@ -37,11 +40,14 @@ public class FileListTableModel extends AbstractTableModel {
 
 	FileItemList data;
 
+	Application app;
+
 	JTable table;
 
-	public FileListTableModel(FileItemList data) {
+	public FileListTableModel(FileItemList data, Application app) {
 		super();
 		this.data = data;
+		this.app = app;
 	}
 
 	public void setTable(JTable table) {
@@ -105,7 +111,7 @@ public class FileListTableModel extends AbstractTableModel {
 				return item.selected;
 			}
 			if (col == 1) {
-				return item.originalName;
+				return getColorizedName(item);
 			}
 			if (col == 2) {
 				return item.season;
@@ -165,5 +171,46 @@ public class FileListTableModel extends AbstractTableModel {
 	public void addRow(FileItem item) {
 		data.add(item);
 		this.fireTableRowsInserted(data.size() - 1, data.size() - 1);
+	}
+
+	public String getColorizedName(FileItem item) {
+		StringBuilder name = new StringBuilder("<html>");
+		Set<Colorization> colorizations = new TreeSet<Colorization>();
+
+		Colorization cSeason = new Colorization();
+		cSeason.start = (int) app.spinnerSeasonNumPos.getValue();
+		cSeason.lentgh = (int) app.spinnerSeasonNumSize.getValue();
+		cSeason.color = "green";
+		colorizations.add(cSeason);
+
+		Colorization cEpisode = new Colorization();
+		cEpisode.start = (int) app.spinnerEpisodeNumPos.getValue();
+		cEpisode.lentgh = (int) app.spinnerEpisodeNumSize.getValue();
+		cEpisode.color = "red";
+		colorizations.add(cEpisode);
+
+		int lastPosition = 0;
+		for (Colorization colorization : colorizations) {
+			name.append(item.originalName.substring(lastPosition, colorization.start));
+			name.append("<font color='" + colorization.color + "'>");
+			name.append(item.originalName.substring(colorization.start, colorization.start + colorization.lentgh));
+			name.append("</font>");
+			lastPosition = colorization.start + colorization.lentgh;
+		}
+		name.append(item.originalName.substring(lastPosition));
+		name.append("</html>");
+
+		return name.toString();
+	}
+
+	class Colorization implements Comparable<Colorization> {
+		public int start;
+		public int lentgh;
+		public String color;
+
+		@Override
+		public int compareTo(Colorization o) {
+			return this.start - o.start;
+		}
 	}
 }

@@ -4,15 +4,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import ui.Application;
 import ui.FileListTableModel;
 
 public class FileItemList extends ArrayList<FileItem> {
 
 	FileListTableModel tableModel;
 
-	public FileItemList() {
+	public FileItemList(Application app) {
 		super();
-		tableModel = new FileListTableModel(this);
+		tableModel = new FileListTableModel(this, app);
 	}
 
 	public FileListTableModel getTableModel() {
@@ -90,4 +91,7 @@ public class FileItemList extends ArrayList<FileItem> {
 		tableModel.fireTableDataChanged();
 	}
 
+	public void refresh() {
+		tableModel.fireTableDataChanged();
+	}
 }

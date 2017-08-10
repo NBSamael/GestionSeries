@@ -80,7 +80,7 @@ public class Application {
 		btnScannerDossier.setBounds(270, 120, 150, 25);
 		frmGestionSeries.getContentPane().add(btnScannerDossier);
 
-		itemList = new FileItemList();
+		itemList = new FileItemList(this);
 
 		JScrollPane scrollPane = new JScrollPane();
 		scrollPane.setBounds(10, 154, 1054, 393);
@@ -97,6 +97,7 @@ public class Application {
 		spinnerSeasonNumPos.setBounds(410, 37, 43, 20);
 		frmGestionSeries.getContentPane().add(spinnerSeasonNumPos);
 		spinnerSeasonNumPos.setValue(3);
+		spinnerSeasonNumPos.addChangeListener(buttonListener);
 
 		JLabel lblSeasonNumPos = new JLabel("Position Num\u00E9ro Saison");
 		lblSeasonNumPos.setBounds(268, 40, 132, 14);
@@ -110,6 +111,7 @@ public class Application {
 		spinnerSeasonNumSize.setBounds(410, 65, 43, 20);
 		frmGestionSeries.getContentPane().add(spinnerSeasonNumSize);
 		spinnerSeasonNumSize.setValue(1);
+		spinnerSeasonNumSize.addChangeListener(buttonListener);
 
 		JLabel lblEpisodeNumPos = new JLabel("Position Num\u00E9ro Episode");
 		lblEpisodeNumPos.setBounds(494, 40, 132, 14);
@@ -119,6 +121,7 @@ public class Application {
 		spinnerEpisodeNumPos.setBounds(636, 37, 43, 20);
 		frmGestionSeries.getContentPane().add(spinnerEpisodeNumPos);
 		spinnerEpisodeNumPos.setValue(5);
+		spinnerEpisodeNumPos.addChangeListener(buttonListener);
 
 		JLabel lblEpisodeNumSire = new JLabel("Taille Num\u00E9ro Episode");
 		lblEpisodeNumSire.setBounds(494, 68, 132, 14);
@@ -128,6 +131,7 @@ public class Application {
 		spinnerEpisodeNumSize.setBounds(636, 65, 43, 20);
 		frmGestionSeries.getContentPane().add(spinnerEpisodeNumSize);
 		spinnerEpisodeNumSize.setValue(2);
+		spinnerEpisodeNumSize.addChangeListener(buttonListener);
 
 		btnTraitementDesDonnes = new JButton("Traitement des donn\u00E9es");
 		btnTraitementDesDonnes.setEnabled(false);
@@ -166,6 +170,7 @@ public class Application {
 		spinnerSeasonNum.setEnabled(false);
 		spinnerSeasonNum.setBounds(214, 65, 29, 20);
 		frmGestionSeries.getContentPane().add(spinnerSeasonNum);
+		spinnerSeasonNum.addChangeListener(buttonListener);
 
 		JLabel lblNumroSaison = new JLabel("Num\u00E9ro Saison");
 		lblNumroSaison.setBounds(131, 68, 71, 14);

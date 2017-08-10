@@ -12,17 +12,25 @@ import java.util.Arrays;
 import java.util.List;
 
 import javax.swing.JFileChooser;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 import data.FileItem;
 import data.ShowInformations;
 
-public class ButtonListener implements java.awt.event.ActionListener {
+public class ButtonListener implements java.awt.event.ActionListener, ChangeListener {
 
 	Application app;
 
 	public ButtonListener(Application app) {
 		super();
 		this.app = app;
+	}
+
+	@Override
+	public void stateChanged(ChangeEvent arg0) {
+		// TODO : vérifier que les intervales ne se chevauchent pas
+		this.app.itemList.refresh();
 	}
 
 	@Override
