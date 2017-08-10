@@ -3,6 +3,7 @@ package api;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -30,9 +31,9 @@ public class JSONUtils {
 		return (String) tokenObject.get(LOGIN_TOKEN);
 	}
 
-	public static List<TvdbSerie> extractSeries(String jsonResponse) throws ParseException {
-		List<TvdbSerie> series = new ArrayList<>();
-		JSONObject seriesArray = (JSONObject) new JSONParser().parse(jsonResponse);
+	public static List<TvdbSerie> extractSeries(String frenchResponse, String englishResponse) throws ParseException {
+		Map<Long, TvdbSerie> series = new HashMap<>();
+		JSONObject seriesArray = (JSONObject) new JSONParser().parse(englishResponse);
 		for (Object serie : (JSONArray) seriesArray.get("data")) {
 			JSONObject serieJson = (JSONObject) serie;
 			TvdbSerie s = new TvdbSerie();
@@ -44,9 +45,27 @@ public class JSONUtils {
 			s.overview = (String) serieJson.get("overview");
 			s.seriesName = (String) serieJson.get("seriesName");
 			s.status = (String) serieJson.get("status");
-			series.add(s);
+			series.put(s.id, s);
 		}
-		return series;
+
+		seriesArray = (JSONObject) new JSONParser().parse(frenchResponse);
+		for (Object serie : (JSONArray) seriesArray.get("data")) {
+			JSONObject serieJson = (JSONObject) serie;
+			Long id = (Long) serieJson.get("id");
+			String overview = (String) serieJson.get("overview");
+			String seriesName = (String) serieJson.get("seriesName");
+			String status = (String) serieJson.get("status");
+			if (overview != null) {
+				series.get(id).overview = overview;
+			}
+			if (seriesName != null) {
+				series.get(id).seriesName = seriesName;
+			}
+			if (status != null) {
+				series.get(id).status = status;
+			}
+		}
+		return new ArrayList<>(series.values());
 	}
 
 	public static TvdbSeriesEpisodes extractEpisodes(String frenchResponse, String englishResponse)

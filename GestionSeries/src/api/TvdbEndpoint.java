@@ -79,8 +79,13 @@ public class TvdbEndpoint {
 			throws ParseException, IOException, org.json.simple.parser.ParseException {
 		String searchUri = API_SEARCH + "?name=" + name;
 		HttpGet searchRequest = buildGetRequest(searchUri);
-		String response = execute(searchRequest);
-		return JSONUtils.extractSeries(response);
+		searchRequest.setHeader("Accept-Language", "fr");
+		String frenchResponse = execute(searchRequest);
+
+		searchRequest = buildGetRequest(searchUri);
+		String englishResponse = execute(searchRequest);
+
+		return JSONUtils.extractSeries(frenchResponse, englishResponse);
 	}
 
 	public TvdbSeriesEpisodes getEpisodesList(Long tvShowId)
