@@ -174,14 +174,19 @@ public class FileListTableModel extends AbstractTableModel {
 	}
 
 	public String getColorizedName(FileItem item) {
+		if (!app.colorization) {
+			return item.originalName;
+		}
 		StringBuilder name = new StringBuilder("<html>");
 		Set<Colorization> colorizations = new TreeSet<Colorization>();
 
-		Colorization cSeason = new Colorization();
-		cSeason.start = (int) app.spinnerSeasonNumPos.getValue();
-		cSeason.lentgh = (int) app.spinnerSeasonNumSize.getValue();
-		cSeason.color = "green";
-		colorizations.add(cSeason);
+		if (app.chckbxSeasonReading.isSelected()) {
+			Colorization cSeason = new Colorization();
+			cSeason.start = (int) app.spinnerSeasonNumPos.getValue();
+			cSeason.lentgh = (int) app.spinnerSeasonNumSize.getValue();
+			cSeason.color = "green";
+			colorizations.add(cSeason);
+		}
 
 		Colorization cEpisode = new Colorization();
 		cEpisode.start = (int) app.spinnerEpisodeNumPos.getValue();
@@ -199,8 +204,8 @@ public class FileListTableModel extends AbstractTableModel {
 		}
 		name.append(item.originalName.substring(lastPosition));
 		name.append("</html>");
-
-		return name.toString();
+		String name2 = name.toString().replaceAll(" ", "&nbsp;");
+		return name2;
 	}
 
 	class Colorization implements Comparable<Colorization> {

@@ -32,6 +32,9 @@ public class Application {
 	public JCheckBox chckbxSeasonReading;
 	public JSpinner spinnerSeasonNum;
 	public JButton btnNewName;
+	public JSpinner spinnerOffset;
+	public JSpinner spinnerFinalLength;
+	public boolean colorization;
 
 	/**
 	 * Launch the application.
@@ -65,6 +68,8 @@ public class Application {
 	 * Initialize the contents of the frame.
 	 */
 	private void initialize() {
+
+		colorization = false;
 
 		ButtonListener buttonListener = new ButtonListener(this);
 
@@ -110,7 +115,7 @@ public class Application {
 		spinnerSeasonNumSize = new JSpinner();
 		spinnerSeasonNumSize.setBounds(410, 65, 43, 20);
 		frmGestionSeries.getContentPane().add(spinnerSeasonNumSize);
-		spinnerSeasonNumSize.setValue(1);
+		spinnerSeasonNumSize.setValue(2);
 		spinnerSeasonNumSize.addChangeListener(buttonListener);
 
 		JLabel lblEpisodeNumPos = new JLabel("Position Num\u00E9ro Episode");
@@ -140,7 +145,7 @@ public class Application {
 		frmGestionSeries.getContentPane().add(btnTraitementDesDonnes);
 
 		textShowName = new JTextField();
-		textShowName.setBounds(768, 37, 149, 20);
+		textShowName.setBounds(768, 37, 192, 20);
 		frmGestionSeries.getContentPane().add(textShowName);
 		textShowName.setColumns(10);
 
@@ -181,5 +186,22 @@ public class Application {
 		btnNewName.addActionListener(buttonListener);
 		btnNewName.setBounds(750, 120, 150, 25);
 		frmGestionSeries.getContentPane().add(btnNewName);
+
+		spinnerOffset = new JSpinner();
+		spinnerOffset.setBounds(768, 65, 58, 20);
+		frmGestionSeries.getContentPane().add(spinnerOffset);
+
+		JLabel lblOffset = new JLabel("Offset");
+		lblOffset.setBounds(705, 68, 46, 14);
+		frmGestionSeries.getContentPane().add(lblOffset);
+
+		spinnerFinalLength = new JSpinner();
+		spinnerFinalLength.setBounds(931, 65, 29, 20);
+		spinnerFinalLength.setValue(2);
+		frmGestionSeries.getContentPane().add(spinnerFinalLength);
+
+		JLabel lblLongueurFinale = new JLabel("Longueur finale");
+		lblLongueurFinale.setBounds(847, 68, 85, 14);
+		frmGestionSeries.getContentPane().add(lblLongueurFinale);
 	}
 }

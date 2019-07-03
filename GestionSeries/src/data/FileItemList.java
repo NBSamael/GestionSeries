@@ -55,6 +55,9 @@ public class FileItemList extends ArrayList<FileItem> {
 			}
 			String episode = originalName.substring(showInfos.EpisodeNumPos,
 					showInfos.EpisodeNumPos + showInfos.EpisodeNumSize);
+			Integer temp = new Integer(episode);
+			temp = temp + showInfos.offset;
+			episode = temp.toString();
 			if (episode.length() < 2) {
 				episode = "0" + episode;
 			}

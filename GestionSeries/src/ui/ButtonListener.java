@@ -91,7 +91,7 @@ public class ButtonListener implements java.awt.event.ActionListener, ChangeList
 	}
 
 	private void pasteNames() {
-		System.out.println("Ligne : " + app.table.getSelectedRows()[0]);
+		// System.out.println("Ligne : " + app.table.getSelectedRows()[0]);
 		// StringSelection ss = (StringSelection)
 		// Toolkit.getDefaultToolkit().getSystemClipboard().getContents(null);
 		// System.out.println(ss.toString());
@@ -135,6 +135,9 @@ public class ButtonListener implements java.awt.event.ActionListener, ChangeList
 		}
 		showInfos.EpisodeNumPos = (int) app.spinnerEpisodeNumPos.getValue();
 		showInfos.EpisodeNumSize = (int) app.spinnerEpisodeNumSize.getValue();
+		showInfos.offset = (int) app.spinnerOffset.getValue();
+		showInfos.finalLength = (int) app.spinnerFinalLength.getValue();
+		app.colorization = false;
 		app.itemList.completeData(showInfos);
 		app.btnPaste.setEnabled(true);
 	}
@@ -157,6 +160,7 @@ public class ButtonListener implements java.awt.event.ActionListener, ChangeList
 			}
 
 			app.btnTraitementDesDonnes.setEnabled(true);
+			app.colorization = true;
 			app.btnPaste.setEnabled(false);
 			app.btnNewName.setEnabled(false);
 			app.btnRenommer.setEnabled(false);

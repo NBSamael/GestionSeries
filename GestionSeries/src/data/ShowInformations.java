@@ -7,6 +7,8 @@ public class ShowInformations {
 	public int SeasonNumSize;
 	public int EpisodeNumPos;
 	public int EpisodeNumSize;
+	public int offset;
+	public int finalLength;
 
 	public ShowInformations() {
 		ShowName = null;
@@ -15,6 +17,8 @@ public class ShowInformations {
 		SeasonNumSize = -1;
 		EpisodeNumPos = -1;
 		EpisodeNumSize = -1;
+		offset = 0;
+		finalLength = -1;
 	}
 
 }
