@@ -36,6 +36,11 @@ public class Application {
 	public JSpinner spinnerFinalLength;
 	public boolean colorization;
 
+	public JFrame framePopUp;
+	public JButton btnRecherche;
+	public JLabel lblSerie;
+	public JButton btnEpisode;
+
 	/**
 	 * Launch the application.
 	 */
@@ -79,6 +84,13 @@ public class Application {
 		frmGestionSeries.setBounds(100, 100, 1080, 600);
 		frmGestionSeries.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frmGestionSeries.getContentPane().setLayout(null);
+
+		framePopUp = new JFrame();
+		framePopUp.setResizable(true);
+		framePopUp.setTitle("Rechercher S\u00E9ries");
+		framePopUp.setBounds(100, 100, 1080, 550);
+		// framePopUp.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		framePopUp.getContentPane().setLayout(null);
 
 		btnScannerDossier = new JButton("Scanner Dossier");
 		btnScannerDossier.addActionListener(buttonListener);
@@ -144,25 +156,43 @@ public class Application {
 		btnTraitementDesDonnes.setBounds(430, 120, 150, 25);
 		frmGestionSeries.getContentPane().add(btnTraitementDesDonnes);
 
-		textShowName = new JTextField();
-		textShowName.setBounds(768, 37, 192, 20);
-		frmGestionSeries.getContentPane().add(textShowName);
-		textShowName.setColumns(10);
-
+		// Recherche Série
 		JLabel lblShowName = new JLabel("Nom S\u00E9rie");
 		lblShowName.setBounds(705, 40, 53, 14);
 		frmGestionSeries.getContentPane().add(lblShowName);
 
-		btnPaste = new JButton("Coller");
-		btnPaste.setEnabled(false);
-		btnPaste.addActionListener(buttonListener);
-		btnPaste.setBounds(590, 120, 150, 25);
-		frmGestionSeries.getContentPane().add(btnPaste);
+		textShowName = new JTextField();
+		textShowName.setBounds(768, 37, 120, 20);
+		frmGestionSeries.getContentPane().add(textShowName);
+		textShowName.setColumns(10);
+
+		btnRecherche = new JButton("Rechercher S\u00E9rie");
+		btnRecherche.setEnabled(false);
+		btnRecherche.addActionListener(buttonListener);
+		btnRecherche.setBounds(900, 35, 120, 25);
+		frmGestionSeries.getContentPane().add(btnRecherche);
+		//
+
+		// Recherche Episodes
+
+		btnEpisode = new JButton("S\u00E9lectionner");
+		btnEpisode.setEnabled(true);
+		btnEpisode.addActionListener(buttonListener);
+		btnEpisode.setBounds(450, 450, 150, 25);
+		framePopUp.getContentPane().add(btnEpisode);
+
+		//
+
+//		btnPaste = new JButton("Coller");
+//		btnPaste.setEnabled(false);
+//		btnPaste.addActionListener(buttonListener);
+//		btnPaste.setBounds(590, 120, 150, 25);
+//		frmGestionSeries.getContentPane().add(btnPaste);
 
 		btnRenommer = new JButton("Renommer");
 		btnRenommer.setEnabled(false);
 		btnRenommer.addActionListener(buttonListener);
-		btnRenommer.setBounds(910, 120, 150, 25);
+		btnRenommer.setBounds(750, 120, 150, 25);
 		frmGestionSeries.getContentPane().add(btnRenommer);
 
 		chckbxSeasonReading = new JCheckBox("Lecture Saison");
@@ -184,7 +214,7 @@ public class Application {
 		btnNewName = new JButton("D\u00E9terminer nom");
 		btnNewName.setEnabled(false);
 		btnNewName.addActionListener(buttonListener);
-		btnNewName.setBounds(750, 120, 150, 25);
+		btnNewName.setBounds(590, 120, 150, 25);
 		frmGestionSeries.getContentPane().add(btnNewName);
 
 		spinnerOffset = new JSpinner();

@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import api.TvdbBasicEpisode;
+import api.TvdbSeriesEpisodes;
 import ui.Application;
 import ui.FileListTableModel;
 
@@ -38,7 +40,7 @@ public class FileItemList extends ArrayList<FileItem> {
 		}
 	}
 
-	public void completeData(ShowInformations showInfos) {
+	public void completeData(ShowInformations showInfos, TvdbSeriesEpisodes episodes) {
 		for (FileItem fileItem : this) {
 			String originalName = fileItem.originalName;
 
@@ -64,8 +66,28 @@ public class FileItemList extends ArrayList<FileItem> {
 
 			fileItem.season = season;
 			fileItem.episode = episode;
+			System.out.println("Saison : " + season + " Episode : " + episode);
+
+			for (TvdbBasicEpisode tvdbBasicEpisode : episodes.tvdbBasicEpisodes.values()) {
+				String saison = tvdbBasicEpisode.airedSeason.toString();
+				if (saison.length() < 2) {
+					saison = "0" + saison;
+				}
+
+				String epi = tvdbBasicEpisode.airedEpisodeNumber.toString();
+				if (epi.length() < 2) {
+					epi = "0" + epi;
+				}
+				System.out.println("  Saison : " + saison + " Episode : " + epi);
+				if (saison.equals(season) && epi.equals(episode)) {
+					System.out.println("Nom épisode : " + tvdbBasicEpisode.episodeName);
+					fileItem.episodeName = tvdbBasicEpisode.episodeName;
+				}
+			}
 		}
+
 		tableModel.fireTableDataChanged();
+
 	}
 
 	public void findNewName(ShowInformations showInfos) {

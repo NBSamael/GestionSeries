@@ -19,7 +19,7 @@ public class TvdbTest {
 			for (TvdbSerie s : series) {
 				System.out.println(s.id + " : \t" + s.seriesName + " (" + s.firstAired + ") - " + s.status);
 
-				if ("The Batman".equals(s.seriesName)) {
+				if ("Batman et Robin (1949)".equals(s.seriesName)) {
 					TvdbSeriesEpisodes episodes = tvdb.getEpisodesList(s.id);
 					for (TvdbBasicEpisode tvdbBasicEpisode : episodes.tvdbBasicEpisodes.values()) {
 						System.out.println("S" + tvdbBasicEpisode.airedSeason + "E"
@@ -28,10 +28,10 @@ public class TvdbTest {
 				}
 			}
 
-			// series = tvdb.searchByName("doctor");
-			// for (TvdbSerie s : series) {
-			// System.out.println(s.seriesName + " - " + s.status);
-			// }
+//			series = tvdb.searchByName("doctor");
+//			for (TvdbSerie s : series) {
+//				System.out.println(s.seriesName + " - " + s.status);
+//			}
 			//
 			// series = tvdb.searchByName("stargate");
 			// for (TvdbSerie s : series) {

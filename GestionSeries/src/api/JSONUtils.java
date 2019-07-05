@@ -51,20 +51,35 @@ public class JSONUtils {
 		seriesArray = (JSONObject) new JSONParser().parse(frenchResponse);
 		for (Object serie : (JSONArray) seriesArray.get("data")) {
 			JSONObject serieJson = (JSONObject) serie;
-			Long id = (Long) serieJson.get("id");
-			String overview = (String) serieJson.get("overview");
-			String seriesName = (String) serieJson.get("seriesName");
-			String status = (String) serieJson.get("status");
-			if (overview != null) {
-				series.get(id).overview = overview;
-			}
-			if (seriesName != null) {
-				series.get(id).seriesName = seriesName;
-			}
-			if (status != null) {
-				series.get(id).status = status;
-			}
+			TvdbSerie s = new TvdbSerie();
+			s.aliases = (Object[]) ((JSONArray) serieJson.get("aliases")).toArray();
+			s.banner = (String) serieJson.get("banner");
+			s.firstAired = (String) serieJson.get("firstAired");
+			s.id = (Long) serieJson.get("id");
+			s.network = (String) serieJson.get("network");
+			s.overview = (String) serieJson.get("overview");
+			s.seriesName = (String) serieJson.get("seriesName");
+			s.status = (String) serieJson.get("status");
+			series.put(s.id, s);
 		}
+
+//		seriesArray = (JSONObject) new JSONParser().parse(frenchResponse);
+//		for (Object serie : (JSONArray) seriesArray.get("data")) {
+//			JSONObject serieJson = (JSONObject) serie;
+//			Long id = (Long) serieJson.get("id");
+//			String overview = (String) serieJson.get("overview");
+//			String seriesName = (String) serieJson.get("seriesName");
+//			String status = (String) serieJson.get("status");
+//			if (overview != null) {
+//				series.get(id).overview = overview;
+//			}
+//			if (seriesName != null) {
+//				series.get(id).seriesName = seriesName;
+//			}
+//			if (status != null) {
+//				series.get(id).status = status;
+//			}
+//		}
 		return new ArrayList<>(series.values());
 	}
 
