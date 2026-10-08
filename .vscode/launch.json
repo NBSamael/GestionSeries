@@ -1,0 +1,25 @@
+{
+	// Configurations de lancement (menu Exécuter et Déboguer, ou F5)
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "java",
+			"name": "GestionSeries",
+			"request": "launch",
+			"mainClass": "ui.Application",
+			"projectName": "GestionSeries",
+			// Sorties console en UTF-8, pour que les accents s'affichent correctement
+			"vmArgs": "-Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8",
+			"console": "internalConsole"
+		},
+		{
+			"type": "java",
+			"name": "Test API TVDB",
+			"request": "launch",
+			"mainClass": "api.TvdbTest",
+			"projectName": "GestionSeries",
+			"vmArgs": "-Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8",
+			"console": "internalConsole"
+		}
+	]
+}

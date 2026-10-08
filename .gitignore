@@ -1,0 +1,4 @@
+/bin/
+
+# Configuration locale contenant la clé API TVDB : ne jamais versionner
+gestionseries.properties

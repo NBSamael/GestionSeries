@@ -7,12 +7,16 @@ import org.apache.http.ParseException;
 
 public class TvdbTest {
 
-	private static final String API_KEY = "D4858E1F5CC604F8";
-	private static final String USER_KEY = "ECF8D275D64FAADF";
-	private static final String USERNAME = "mr_flibble";
-
 	public static void main(String[] args) {
-		TvdbEndpoint tvdb = new TvdbEndpoint(API_KEY, USERNAME, USER_KEY);
+		// Données de connexion lues dans gestionseries.properties (voir TvdbConfig)
+		TvdbConfig config;
+		try {
+			config = TvdbConfig.load();
+		} catch (TvdbConfig.ConfigException e) {
+			System.out.println(e.getMessage());
+			return;
+		}
+		TvdbEndpoint tvdb = new TvdbEndpoint(config.getApiKey(), config.getPin());
 		try {
 			tvdb.login();
 			List<TvdbSerie> series = tvdb.searchByName("batman");
@@ -28,10 +32,10 @@ public class TvdbTest {
 				}
 			}
 
-//			series = tvdb.searchByName("doctor");
-//			for (TvdbSerie s : series) {
-//				System.out.println(s.seriesName + " - " + s.status);
-//			}
+			// series = tvdb.searchByName("doctor");
+			// for (TvdbSerie s : series) {
+			// System.out.println(s.seriesName + " - " + s.status);
+			// }
 			//
 			// series = tvdb.searchByName("stargate");
 			// for (TvdbSerie s : series) {
