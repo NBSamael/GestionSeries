@@ -3,6 +3,8 @@ package api;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import org.apache.http.HttpEntity;
@@ -158,5 +160,48 @@ public class TvdbEndpoint {
 		} while (result.tvdblinks.next != null);
 
 		return result;
+	}
+
+	/**
+	 * Episodes d'une saison, triés par numéro, avec leurs textes français
+	 * séparés de ceux de la langue d'origine (frenchName / frenchOverview).
+	 */
+	public List<TvdbBasicEpisode> getSeasonEpisodes(Long tvShowId, long season)
+			throws ParseException, IOException, org.json.simple.parser.ParseException {
+		TvdbSeriesEpisodes result = null;
+		long page = 0;
+
+		// Episodes de la saison, dans la langue d'origine
+		do {
+			String uri = API_EPISODES_LIST + tvShowId + "/episodes/" + SEASON_TYPE + "?page=" + page + "&season="
+					+ season;
+			TvdbSeriesEpisodes temp = JSONUtils.extractEpisodes(null, execute(buildGetRequest(uri)));
+			if (result == null) {
+				result = temp;
+			} else {
+				result.tvdbBasicEpisodes.putAll(temp.tvdbBasicEpisodes);
+				result.tvdblinks = temp.tvdblinks;
+			}
+			page++;
+		} while (result.tvdblinks.next != null);
+
+		// Textes français : la liste en français ignore le filtre de saison, toute la série est parcourue
+		page = 0;
+		String next;
+		do {
+			String frenchUri = API_EPISODES_LIST + tvShowId + "/episodes/" + SEASON_TYPE + "/" + FRENCH + "?page="
+					+ page;
+			String frenchResponse = execute(buildGetRequest(frenchUri));
+			if (frenchResponse == null) {
+				break;
+			}
+			next = JSONUtils.addFrenchTranslations(result, frenchResponse);
+			page++;
+		} while (next != null);
+
+		List<TvdbBasicEpisode> episodes = new ArrayList<>(result.tvdbBasicEpisodes.values());
+		episodes.sort(Comparator.comparing((TvdbBasicEpisode e) -> e.airedEpisodeNumber,
+				Comparator.nullsLast(Long::compareTo)));
+		return episodes;
 	}
 }

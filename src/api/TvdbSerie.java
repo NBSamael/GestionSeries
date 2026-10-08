@@ -8,5 +8,7 @@ public class TvdbSerie {
 	public String network;
 	public String overview;
 	public String seriesName;
+	// Identifiant de la série dans les adresses de thetvdb.com
+	public String slug;
 	public String status;
 }

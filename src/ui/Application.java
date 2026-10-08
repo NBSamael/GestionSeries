@@ -21,6 +21,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSlider;
 import javax.swing.JSpinner;
+import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
@@ -182,9 +183,17 @@ public class Application {
 		frmGestionSeries.setResizable(true);
 		frmGestionSeries.setTitle("Gestion Séries");
 		frmGestionSeries.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		// Deux fonctionnalités indépendantes, chacune dans son onglet
+		JTabbedPane tabbedPane = new JTabbedPane();
+		frmGestionSeries.setContentPane(tabbedPane);
+
+		// Onglet Renommage
 		JPanel contentPane = new JPanel(new BorderLayout(0, 5));
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
-		frmGestionSeries.setContentPane(contentPane);
+		tabbedPane.addTab("Renommage", contentPane);
+
+		// Onglet Comparaison Netflix
+		tabbedPane.addTab("Comparaison Netflix", new NetflixComparePanel());
 
 		// Fenêtre de choix de la série, ouverte à chaque recherche
 		searchDialog = new SeriesSearchDialog(frmGestionSeries);

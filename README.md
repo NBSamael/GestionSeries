@@ -10,7 +10,11 @@ Nom de la série - S02E05 - Titre de l'épisode.mkv
 
 ![Fenêtre principale de GestionSeries](docs/screenshot.png)
 
+Un second onglet **compare les épisodes d'une saison Netflix avec TheTVDB** pour repérer les traductions françaises manquantes ou différentes, et préparer leur saisie sur thetvdb.com.
+
 ## Fonctionnalités
+
+### Renommage
 
 - **Recherche de la série sur TheTVDB** (API v4) : liste des résultats avec date de première diffusion, réseau, statut et résumé, pour distinguer les séries homonymes.
 - **Titres d'épisodes en français**, avec repli sur la langue d'origine quand la traduction n'existe pas.
@@ -19,6 +23,18 @@ Nom de la série - S02E05 - Titre de l'épisode.mkv
 - **Parcours récursif des sous-dossiers** (par exemple un dossier par saison).
 - **Décalage de numérotation** (offset) et **longueur du numéro d'épisode** paramétrables.
 - **Contrôle avant renommage** : sélection des fichiers à traiter, fichiers en erreur signalés avec leur cause, aperçu du nouveau nom.
+
+### Comparaison Netflix ↔ TheTVDB
+
+- **Lecture d'un CSV d'épisodes Netflix**, exporté par l'extension Chrome *NetflixEpisodesExport* (projet séparé) : saison, numéro, titre et résumé en français.
+- **Lecture de la saison sur TheTVDB**, en distinguant les traductions françaises existantes de celles qui manquent.
+- **Mise face à face par numéro d'épisode**, avec un état pour le titre et pour le résumé : épisode absent de TVDB, absent en français, différent, différent seulement par la ponctuation, identique.
+- **Détection des décalages de numérotation** : un titre qui correspond à celui d'un autre numéro est signalé (par exemple quand TVDB contient des épisodes en plus).
+- **Renumérotation** d'une source sur l'autre d'après les titres communs, pour l'affichage seulement.
+- **Préparation de la saisie** : ouverture de la page de traduction française de l'épisode (ou d'ajout d'épisodes) sur thetvdb.com, avec le texte à reporter copié dans le presse-papiers. La saisie et la validation restent manuelles.
+
+### Interface
+
 - Interface en **thème sombre** ([FlatLaf](https://www.formdev.com/flatlaf/)).
 
 ## Prérequis
@@ -76,7 +92,11 @@ Le projet peut aussi être importé dans Eclipse (fichiers `.project` et `.class
 
 ## Utilisation
 
-La fenêtre principale suit les étapes du traitement :
+La fenêtre principale comporte deux onglets indépendants.
+
+### Onglet Renommage
+
+L'onglet suit les étapes du traitement :
 
 1. **Fichiers** : cliquez sur *Scanner Dossier* et choisissez le dossier contenant les épisodes. Cochez *Inclure les sous-dossiers* pour parcourir aussi les sous-dossiers.
 2. **Série** : saisissez le nom de la série, lancez la recherche (bouton ou touche `Entrée`), puis choisissez la bonne série dans la liste (bouton *Sélectionner* ou double-clic).
@@ -90,13 +110,22 @@ Seuls les fichiers cochés dans la colonne *Sel.* sont traités. Un fichier dont
 
 > ⚠️ Le renommage modifie directement les fichiers : vérifiez la colonne *Nom fichier traité* avant de cliquer sur *Renommer*.
 
+### Onglet Comparaison Netflix
+
+1. **CSV Netflix** : cliquez sur *Ouvrir CSV…* et choisissez le fichier exporté (`<Série> - Saison N - episodes.csv`, séparateur `;`, en-tête `Saison;Épisode;Titre;Résumé`).
+2. **Série TVDB** : le nom de la série est déduit du nom du fichier ; lancez la recherche et choisissez la série. Les saisons présentes dans le CSV sont lues sur TheTVDB. Pour une autre saison de la même série, chargez simplement le CSV suivant : la série choisie est conservée.
+3. **Écarts** : filtrez le tableau (tous les épisodes, écarts à reporter, écarts ponctuation comprise). La colonne *Autre numéro* signale les décalages de numérotation ; *Renuméroter…* recale alors une source sur l'autre (colonne *N° d'origine*), *Numérotation d'origine* annule.
+4. **Saisie** : sélectionnez un épisode puis cliquez sur *Traduire sur TVDB* (ou *Ajouter sur TVDB* si l'épisode est absent) : la page s'ouvre dans le navigateur et le titre Netflix, ou à défaut le résumé, est copié dans le presse-papiers. *Copier le titre* et *Copier le résumé* copient l'autre texte. Il suffit de coller, puis de valider sur le site (connecté à votre compte TheTVDB).
+
+Rien n'est modifié automatiquement : ni le CSV, ni TheTVDB.
+
 ## Structure du projet
 
 ```
 src/
-├── api/    Client TheTVDB v4 : connexion, recherche, épisodes, configuration, erreurs
-├── data/   Modèle : fichiers à traiter, paramètres de lecture des numéros
-└── ui/     Interface Swing : fenêtre principale, tableau, recherche de série, thème
+├── api/    Client TheTVDB v4 : connexion, recherche, épisodes, configuration, erreurs, adresses du site
+├── data/   Modèle : fichiers à traiter, lecture des numéros, CSV Netflix, comparaison et renumérotation
+└── ui/     Interface Swing : fenêtre à onglets, tableaux, recherche de série, thème
 lib/        Bibliothèques (Apache HttpClient, json-simple, FlatLaf)
 ```
 

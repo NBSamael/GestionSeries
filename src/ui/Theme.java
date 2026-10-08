@@ -46,6 +46,16 @@ public final class Theme {
 		return isDark() ? new Color(0xFF6B6B) : new Color(0xC80000);
 	}
 
+	/** Texte d'un écart à vérifier (texte différent entre Netflix et TVDB) */
+	public static Color warningForeground() {
+		return isDark() ? new Color(0xF0B45A) : new Color(0xB05A00);
+	}
+
+	/** Texte d'une comparaison sans écart */
+	public static Color successForeground() {
+		return isDark() ? new Color(0x7CC87C) : new Color(0x1E7B1E);
+	}
+
 	/** Fond d'une ligne sur deux, légèrement décalé par rapport au fond du tableau */
 	public static Color stripeBackground(Color tableBackground) {
 		return isDark() ? ColorFunctions.lighten(tableBackground, 0.04f)

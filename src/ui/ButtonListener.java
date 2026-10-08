@@ -1,7 +1,5 @@
 package ui;
 
-import java.awt.Component;
-import java.awt.Cursor;
 import java.awt.HeadlessException;
 import java.awt.Toolkit;
 import java.awt.datatransfer.DataFlavor;
@@ -24,7 +22,6 @@ import javax.swing.event.DocumentListener;
 import api.TvdbBasicEpisode;
 import api.TvdbConfig;
 import api.TvdbEndpoint;
-import api.TvdbErrors;
 import api.TvdbSerie;
 import api.TvdbSeriesEpisodes;
 import data.FileItem;
@@ -134,19 +131,14 @@ public class ButtonListener implements java.awt.event.ActionListener, ChangeList
 	}
 
 	private void rechercheSerie() {
-		// Données de connexion lues à chaque recherche : une correction du fichier est prise en compte sans relancer
-		TvdbConfig config;
-		try {
-			config = TvdbConfig.load();
-		} catch (TvdbConfig.ConfigException e) {
-			javax.swing.JOptionPane.showMessageDialog(app.frmGestionSeries, e.getMessage(),
-					"Configuration TVDB", javax.swing.JOptionPane.ERROR_MESSAGE);
+		TvdbConfig config = TvdbUi.loadConfig(app.frmGestionSeries);
+		if (config == null) {
 			return;
 		}
 		tvdb = new TvdbEndpoint(config.getApiKey(), config.getPin());
 		series = null;
 
-		setBusy(app.frmGestionSeries, true);
+		TvdbUi.setBusy(app.frmGestionSeries, true);
 		try {
 			tvdb.login();
 			String NameSerie = app.textShowName.getText();
@@ -154,12 +146,12 @@ public class ButtonListener implements java.awt.event.ActionListener, ChangeList
 		} catch (Exception e1) {
 			// Erreur réseau, refus du serveur ou réponse illisible : expliquée à l'utilisateur
 			e1.printStackTrace();
-			setBusy(app.frmGestionSeries, false);
-			showTvdbError(app.frmGestionSeries, "Recherche de série", e1);
+			TvdbUi.setBusy(app.frmGestionSeries, false);
+			TvdbUi.showError(app.frmGestionSeries, "Recherche de série", e1);
 			return;
 		} finally {
 			// Rétabli avant l'ouverture de la fenêtre de recherche, qui est bloquante
-			setBusy(app.frmGestionSeries, false);
+			TvdbUi.setBusy(app.frmGestionSeries, false);
 		}
 		if (series != null) {
 			System.out.println(app.textShowName.getText());
@@ -180,7 +172,7 @@ public class ButtonListener implements java.awt.event.ActionListener, ChangeList
 		if (s == null) {
 			return;
 		}
-		setBusy(app.searchDialog, true);
+		TvdbUi.setBusy(app.searchDialog, true);
 		try {
 			episodes = tvdb.getEpisodesList(s.id);
 			nomSerie = s.seriesName;
@@ -193,26 +185,14 @@ public class ButtonListener implements java.awt.event.ActionListener, ChangeList
 		} catch (Exception e1) {
 			// La fenêtre de recherche reste ouverte : l'utilisateur peut réessayer ou choisir une autre série
 			e1.printStackTrace();
-			setBusy(app.searchDialog, false);
-			showTvdbError(app.searchDialog, "Chargement des épisodes", e1);
+			TvdbUi.setBusy(app.searchDialog, false);
+			TvdbUi.showError(app.searchDialog, "Chargement des épisodes", e1);
 			return;
 		} finally {
-			setBusy(app.searchDialog, false);
+			TvdbUi.setBusy(app.searchDialog, false);
 		}
 
 		app.searchDialog.setVisible(false);
-	}
-
-	// Explique à l'utilisateur l'échec d'un appel à TVDB ; le détail technique reste disponible en dessous
-	private void showTvdbError(Component parent, String title, Exception error) {
-		String message = TvdbErrors.describe(error) + "\n\nDétail technique : " + error.getClass().getSimpleName()
-				+ (error.getMessage() != null ? " - " + error.getMessage() : "");
-		javax.swing.JOptionPane.showMessageDialog(parent, message, title, javax.swing.JOptionPane.ERROR_MESSAGE);
-	}
-
-	// Affiche le curseur d'attente sur la fenêtre pendant les appels à TVDB (qui bloquent l'interface)
-	private void setBusy(Component window, boolean busy) {
-		window.setCursor(busy ? Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR) : null);
 	}
 
 	private void rename() {

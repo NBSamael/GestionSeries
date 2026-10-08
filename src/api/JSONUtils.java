@@ -62,6 +62,7 @@ public class JSONUtils {
 				s.overview = translated(serieJson, "overviews", lang, (String) serieJson.get("overview"));
 				s.seriesName = translated(serieJson, "translations", lang, (String) serieJson.get("name"));
 				s.status = (String) serieJson.get("status");
+				s.slug = (String) serieJson.get("slug");
 				series.put(s.id, s);
 			}
 		}
@@ -104,22 +105,7 @@ public class JSONUtils {
 		}
 
 		if (frenchResponse != null) {
-			JSONObject frenchEpisodesArray = (JSONObject) new JSONParser().parse(frenchResponse);
-			for (Object episode : getEpisodesArray(frenchEpisodesArray)) {
-				JSONObject episodeJson = (JSONObject) episode;
-				TvdbBasicEpisode tvdbBasicEpisode = episodes.tvdbBasicEpisodes.get((Long) episodeJson.get("id"));
-				if (tvdbBasicEpisode == null) {
-					continue;
-				}
-				String episodeName = (String) episodeJson.get("name");
-				String overview = (String) episodeJson.get("overview");
-				if (episodeName != null) {
-					tvdbBasicEpisode.episodeName = episodeName;
-				}
-				if (overview != null) {
-					tvdbBasicEpisode.overview = overview;
-				}
-			}
+			addFrenchTranslations(episodes, frenchResponse);
 		}
 
 		JSONObject linksJson = (JSONObject) originalEpisodesArray.get("links");
@@ -132,5 +118,37 @@ public class JSONUtils {
 		}
 
 		return episodes;
+	}
+
+	/**
+	 * Renseigne les textes français des épisodes déjà lus à partir d'une page de
+	 * la liste en français ; les épisodes de la page absents de la liste sont
+	 * ignorés.
+	 *
+	 * @return l'adresse de la page suivante, null si c'est la dernière
+	 */
+	public static String addFrenchTranslations(TvdbSeriesEpisodes episodes, String frenchResponse)
+			throws ParseException {
+		JSONObject frenchEpisodesArray = (JSONObject) new JSONParser().parse(frenchResponse);
+		for (Object episode : getEpisodesArray(frenchEpisodesArray)) {
+			JSONObject episodeJson = (JSONObject) episode;
+			TvdbBasicEpisode tvdbBasicEpisode = episodes.tvdbBasicEpisodes.get((Long) episodeJson.get("id"));
+			if (tvdbBasicEpisode == null) {
+				continue;
+			}
+			// L'API renvoie null quand la traduction n'existe pas
+			String episodeName = (String) episodeJson.get("name");
+			String overview = (String) episodeJson.get("overview");
+			tvdbBasicEpisode.frenchName = episodeName;
+			tvdbBasicEpisode.frenchOverview = overview;
+			if (episodeName != null) {
+				tvdbBasicEpisode.episodeName = episodeName;
+			}
+			if (overview != null) {
+				tvdbBasicEpisode.overview = overview;
+			}
+		}
+		JSONObject linksJson = (JSONObject) frenchEpisodesArray.get("links");
+		return linksJson != null ? (String) linksJson.get("next") : null;
 	}
 }
