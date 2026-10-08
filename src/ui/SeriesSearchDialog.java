@@ -22,10 +22,10 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 import javax.swing.table.AbstractTableModel;
 
-import api.TvdbSerie;
+import api.Series;
 
 /**
- * Fenêtre de choix de la série parmi les résultats d'une recherche TVDB.
+ * Fenêtre de choix de la série parmi les résultats d'une recherche dans la source de données.
  */
 public class SeriesSearchDialog extends JDialog {
 
@@ -101,9 +101,9 @@ public class SeriesSearchDialog extends JDialog {
 	 * diffusion) et ouvre la fenêtre, centrée sur la fenêtre principale. L'appel
 	 * est bloquant jusqu'à la fermeture de la fenêtre.
 	 */
-	public void showSeries(List<TvdbSerie> series) {
-		List<TvdbSerie> sorted = new ArrayList<>(series);
-		sorted.sort(Comparator.comparing((TvdbSerie s) -> s.seriesName, Comparator.nullsLast(String::compareTo))
+	public void showSeries(List<Series> series) {
+		List<Series> sorted = new ArrayList<>(series);
+		sorted.sort(Comparator.comparing((Series s) -> s.name, Comparator.nullsLast(String::compareTo))
 				.thenComparing(s -> s.firstAired, Comparator.nullsLast(String::compareTo)));
 		tableModel.setSeries(sorted);
 		table.clearSelection();
@@ -113,7 +113,7 @@ public class SeriesSearchDialog extends JDialog {
 	}
 
 	/** Série sélectionnée, ou null si aucune */
-	public TvdbSerie getSelectedSerie() {
+	public Series getSelectedSerie() {
 		int viewRow = table.getSelectedRow();
 		if (viewRow < 0) {
 			return null;
@@ -122,7 +122,7 @@ public class SeriesSearchDialog extends JDialog {
 	}
 
 	private void updateSelection() {
-		TvdbSerie serie = getSelectedSerie();
+		Series serie = getSelectedSerie();
 		btnSelect.setEnabled(serie != null);
 		overview.setText(serie != null && serie.overview != null ? serie.overview : "");
 		overview.setCaretPosition(0);
@@ -130,16 +130,16 @@ public class SeriesSearchDialog extends JDialog {
 
 	/** Colonnes de la liste des séries ; l'ordre de déclaration détermine leur position */
 	private enum Column {
-		NAME("Nom", 400, s -> s.seriesName),
+		NAME("Nom", 400, s -> s.name),
 		FIRST_AIRED("Première diffusion", 110, s -> s.firstAired),
 		NETWORK("Réseau", 150, s -> s.network),
 		STATUS("Statut", 100, s -> s.status);
 
 		private final String name;
 		private final int width;
-		private final Function<TvdbSerie, String> value;
+		private final Function<Series, String> value;
 
-		Column(String name, int width, Function<TvdbSerie, String> value) {
+		Column(String name, int width, Function<Series, String> value) {
 			this.name = name;
 			this.width = width;
 			this.value = value;
@@ -151,14 +151,14 @@ public class SeriesSearchDialog extends JDialog {
 		/** serialUID */
 		private static final long serialVersionUID = 1L;
 
-		private List<TvdbSerie> series = new ArrayList<>();
+		private List<Series> series = new ArrayList<>();
 
-		void setSeries(List<TvdbSerie> series) {
+		void setSeries(List<Series> series) {
 			this.series = series;
 			fireTableDataChanged();
 		}
 
-		TvdbSerie getSerie(int row) {
+		Series getSerie(int row) {
 			return series.get(row);
 		}
 

@@ -46,7 +46,7 @@ public final class Theme {
 		return isDark() ? new Color(0xFF6B6B) : new Color(0xC80000);
 	}
 
-	/** Texte d'un écart à vérifier (texte différent entre Netflix et TVDB) */
+	/** Texte d'un écart à vérifier (texte différent entre Netflix et la source de données) */
 	public static Color warningForeground() {
 		return isDark() ? new Color(0xF0B45A) : new Color(0xB05A00);
 	}

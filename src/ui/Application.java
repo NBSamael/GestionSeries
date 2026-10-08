@@ -9,6 +9,8 @@ import java.awt.EventQueue;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.io.File;
 
 import javax.swing.JButton;
@@ -17,6 +19,9 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSlider;
@@ -24,6 +29,7 @@ import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.KeyStroke;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.ListSelectionModel;
 import javax.swing.UIManager;
@@ -34,7 +40,8 @@ import javax.swing.border.TitledBorder;
 
 import com.formdev.flatlaf.FlatDarkLaf;
 
-import api.TvdbSerie;
+import api.DataSourceType;
+import api.Series;
 import data.FileItem;
 import data.FileItemList;
 import data.SeasonReading;
@@ -77,7 +84,12 @@ public class Application {
 	/* Barre d'état et informations qu'elle affiche */
 	private JLabel statusBar;
 	public File currentDirectory;
-	public TvdbSerie currentSerie;
+	public Series currentSerie;
+	// Source de données choisie dans les préférences
+	public DataSourceType dataSource = Settings.getDataSource();
+	private ButtonListener buttonListener;
+	private NetflixComparePanel comparePanel;
+	private SettingsDialog settingsDialog;
 	public JButton btnRecherche;
 	public JLabel lblSerie;
 	public JButton btnEpisode;
@@ -151,16 +163,35 @@ public class Application {
 			status.append(", ").append(ignored).append(" ignoré(s)");
 			status.append(", ").append(errors).append(" en erreur");
 		}
+		status.append("   —   Source : ").append(dataSource.getLabel());
 		status.append("   —   Série : ");
 		if (currentSerie == null) {
 			status.append("aucune");
 		} else {
-			status.append(currentSerie.seriesName);
+			status.append(currentSerie.name);
 			if (currentSerie.firstAired != null && currentSerie.firstAired.length() >= 4) {
 				status.append(" (").append(currentSerie.firstAired.substring(0, 4)).append(")");
 			}
 		}
 		statusBar.setText(status.toString());
+	}
+
+	/**
+	 * Ouvre les préférences ; à la validation, elles sont mémorisées et un
+	 * changement de source annule la série choisie dans chaque onglet. Les autres
+	 * réglages sont relus dans Settings au moment de leur utilisation.
+	 */
+	private void editSettings() {
+		if (!settingsDialog.edit()) {
+			return;
+		}
+		DataSourceType newDataSource = Settings.getDataSource();
+		if (newDataSource != dataSource) {
+			dataSource = newDataSource;
+			buttonListener.resetSerie();
+			comparePanel.setDataSource(newDataSource);
+			updateStatusBar();
+		}
 	}
 
 	/**
@@ -177,12 +208,30 @@ public class Application {
 
 		colorization = false;
 
-		ButtonListener buttonListener = new ButtonListener(this);
+		buttonListener = new ButtonListener(this);
 
 		frmGestionSeries = new JFrame();
 		frmGestionSeries.setResizable(true);
 		frmGestionSeries.setTitle("Gestion Séries");
 		frmGestionSeries.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+		// Menu de paramétrage
+		JMenuBar menuBar = new JMenuBar();
+		JMenu settingsMenu = new JMenu("Paramètres");
+		settingsMenu.setMnemonic(KeyEvent.VK_P);
+		JMenuItem preferencesItem = new JMenuItem("Préférences…");
+		preferencesItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_COMMA, InputEvent.CTRL_DOWN_MASK));
+		preferencesItem.addActionListener(e -> editSettings());
+		settingsMenu.add(preferencesItem);
+		menuBar.add(settingsMenu);
+		JMenu helpMenu = new JMenu("Aide");
+		helpMenu.setMnemonic(KeyEvent.VK_A);
+		JMenuItem aboutItem = new JMenuItem("À propos…");
+		aboutItem.addActionListener(e -> new AboutDialog(frmGestionSeries).open());
+		helpMenu.add(aboutItem);
+		menuBar.add(helpMenu);
+		frmGestionSeries.setJMenuBar(menuBar);
+		settingsDialog = new SettingsDialog(frmGestionSeries);
 		// Deux fonctionnalités indépendantes, chacune dans son onglet
 		JTabbedPane tabbedPane = new JTabbedPane();
 		frmGestionSeries.setContentPane(tabbedPane);
@@ -193,7 +242,8 @@ public class Application {
 		tabbedPane.addTab("Renommage", contentPane);
 
 		// Onglet Comparaison Netflix
-		tabbedPane.addTab("Comparaison Netflix", new NetflixComparePanel());
+		comparePanel = new NetflixComparePanel(dataSource);
+		tabbedPane.addTab("Comparaison Netflix", comparePanel);
 
 		// Fenêtre de choix de la série, ouverte à chaque recherche
 		searchDialog = new SeriesSearchDialog(frmGestionSeries);
@@ -289,7 +339,7 @@ public class Application {
 		spinnerOffset = createSpinner(0, null, null);
 		addLabeled(numberingPanel, "Offset", spinnerOffset, 0, 3,
 				"Valeur ajoutée au numéro d'épisode lu (négative pour le diminuer), "
-						+ "par exemple quand la numérotation des fichiers est décalée par rapport à TVDB");
+						+ "par exemple quand la numérotation des fichiers est décalée par rapport à la source de données");
 
 		spinnerFinalLength = createSpinner(2, 1, MAX_NUMBER_SIZE);
 		addLabeled(numberingPanel, "Longueur finale", spinnerFinalLength, 2, 3,

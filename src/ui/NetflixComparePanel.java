@@ -17,16 +17,18 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.swing.JButton;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -48,11 +50,10 @@ import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableRowSorter;
 
-import api.TvdbBasicEpisode;
-import api.TvdbConfig;
-import api.TvdbEndpoint;
-import api.TvdbSerie;
-import api.TvdbSite;
+import api.Episode;
+import api.DataSource;
+import api.DataSourceType;
+import api.Series;
 import data.EpisodeComparison;
 import data.EpisodeNumbering;
 import data.EpisodeNumbering.Reference;
@@ -61,8 +62,8 @@ import data.NetflixEpisode;
 import data.TextComparison.Result;
 
 /**
- * Onglet de comparaison entre un CSV exporté de Netflix et les épisodes TVDB,
- * pour préparer la saisie des traductions françaises sur thetvdb.com.
+ * Onglet de comparaison entre un CSV exporté de Netflix et les épisodes de la source de données,
+ * pour préparer la saisie des traductions françaises sur le site de la source.
  */
 public class NetflixComparePanel extends JPanel {
 
@@ -81,7 +82,7 @@ public class NetflixComparePanel extends JPanel {
 	private final TableRowSorter<ComparisonTableModel> sorter = new TableRowSorter<>(tableModel);
 	private final JComboBox<Filter> comboFilter = new JComboBox<>(Filter.values());
 	private final JTextArea netflixSynopsis = createTextArea();
-	private final JTextArea tvdbOverview = createTextArea();
+	private final JTextArea sourceOverview = createTextArea();
 	private final JLabel lblFile = new JLabel("Aucun fichier chargé");
 	private final JTextField textShowName = new JTextField(20);
 	private final JButton btnSearch = new JButton("Rechercher Série");
@@ -94,23 +95,28 @@ public class NetflixComparePanel extends JPanel {
 	// Nom de la série déduit du nom du dernier CSV chargé
 	private String csvShowName;
 
-	private TvdbEndpoint tvdb;
+	private DataSource source;
 	private SeriesSearchDialog searchDialog;
-	// Série TVDB choisie (null si aucune) et ses épisodes des saisons du CSV
-	private TvdbSerie serie;
-	private List<TvdbBasicEpisode> tvdbEpisodes = new ArrayList<>();
+	// Série choisie dans la source (null si aucune) et ses épisodes des saisons du CSV
+	private Series serie;
+	private List<Episode> sourceEpisodes = new ArrayList<>();
 	// Source dont les numéros sont conservés (ORIGINAL : aucune renumérotation)
 	private Reference numberingReference = Reference.ORIGINAL;
-	private final JButton btnOpenTvdb = new JButton("Traduire sur TVDB");
+	// Source de données choisie dans les préférences ; son nom apparaît dans les libellés
+	private DataSourceType dataSource;
+	private final TitledBorder showPanelBorder = new TitledBorder("");
+	private final TitledBorder sourceOverviewBorder = new TitledBorder("");
+	private final JButton btnOpenSource = new JButton();
 	private final JButton btnCopyTitle = new JButton("Copier le titre");
 	private final JButton btnCopySynopsis = new JButton("Copier le résumé");
 	private final JLabel lblCopied = new JLabel(" ");
 	private final JButton btnRenumber = new JButton("Renuméroter…");
 	private final JButton btnOriginalNumbering = new JButton("Numérotation d'origine");
 
-	public NetflixComparePanel() {
+	public NetflixComparePanel(DataSourceType dataSource) {
 		super(new BorderLayout(0, 5));
 		setBorder(new EmptyBorder(5, 5, 5, 5));
+		this.dataSource = dataSource;
 
 		JPanel settingsPanel = new JPanel(new GridBagLayout());
 		add(settingsPanel, BorderLayout.NORTH);
@@ -126,8 +132,9 @@ public class NetflixComparePanel extends JPanel {
 		fileConstraints.weightx = 1.0;
 		csvPanel.add(lblFile, fileConstraints);
 
-		// 2. Série TVDB
-		JPanel showPanel = createGroupPanel("2. Série TVDB");
+		// 2. Série
+		JPanel showPanel = new JPanel(new GridBagLayout());
+		showPanel.setBorder(showPanelBorder);
 		addGroup(settingsPanel, showPanel, 1, 0.5);
 		showPanel.add(new JLabel("Nom Série"), gbc(0, 0));
 		GridBagConstraints textConstraints = gbc(1, 0);
@@ -168,11 +175,23 @@ public class NetflixComparePanel extends JPanel {
 			sorter.setRowFilter(((Filter) comboFilter.getSelectedItem()).rowFilter);
 			updateSelection();
 		});
+		// Libellés des filtres, avec le nom de la source
+		comboFilter.setRenderer(new DefaultListCellRenderer() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+					boolean isSelected, boolean cellHasFocus) {
+				super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+				if (value instanceof Filter) {
+					setText(((Filter) value).label(sourceName()));
+				}
+				return this;
+			}
+		});
 		filterPanel.add(comboFilter, gbc(1, 0));
 
 		btnRenumber.setEnabled(false);
-		btnRenumber.setToolTipText("<html>Recale la numérotation d'une source sur l'autre, d'après les titres qui correspondent<br>"
-				+ "(affichage seulement : ni le CSV ni TVDB ne sont modifiés)</html>");
 		btnRenumber.addActionListener(e -> renumber());
 		filterPanel.add(btnRenumber, actionConstraints(0, 1));
 		btnOriginalNumbering.setEnabled(false);
@@ -200,15 +219,15 @@ public class NetflixComparePanel extends JPanel {
 
 		JSplitPane synopsisPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
 				createTitledScrollPane(netflixSynopsis, "Résumé Netflix"),
-				createTitledScrollPane(tvdbOverview, "Résumé TVDB (FR)"));
+				createTitledScrollPane(sourceOverview, sourceOverviewBorder));
 		synopsisPane.setResizeWeight(0.5);
 
 		// Actions sur l'épisode sélectionné, au-dessus de ses résumés
 		JPanel actionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
 		actionsPanel.setBorder(new EmptyBorder(0, 0, 4, 0));
 		actionsPanel.add(new JLabel("Épisode sélectionné :"));
-		btnOpenTvdb.addActionListener(e -> openOnTvdb());
-		actionsPanel.add(btnOpenTvdb);
+		btnOpenSource.addActionListener(e -> openOnSource());
+		actionsPanel.add(btnOpenSource);
 		btnCopyTitle.setToolTipText("Copie le titre Netflix dans le presse-papiers");
 		btnCopyTitle.addActionListener(e -> copy(selectedRow().netflix.title, "Titre"));
 		actionsPanel.add(btnCopyTitle);
@@ -231,8 +250,44 @@ public class NetflixComparePanel extends JPanel {
 				new EmptyBorder(3, 2, 0, 2)));
 		statusPanel.add(statusBar, BorderLayout.CENTER);
 		add(statusPanel, BorderLayout.SOUTH);
+		updateLabels();
 		updateSelection();
 		updateStatusBar();
+	}
+
+	/**
+	 * Change de source de données : la série choisie et ses épisodes sont oubliés
+	 * (il faut chercher la série dans la nouvelle source), le CSV est conservé.
+	 */
+	public void setDataSource(DataSourceType dataSource) {
+		this.dataSource = dataSource;
+		source = null;
+		serie = null;
+		sourceEpisodes = new ArrayList<>();
+		numberingReference = Reference.ORIGINAL;
+		updateLabels();
+		refreshComparison();
+	}
+
+	private String sourceName() {
+		return dataSource.getLabel();
+	}
+
+	// Libellés fixes contenant le nom de la source ; les autres sont calculés à l'affichage
+	private void updateLabels() {
+		showPanelBorder.setTitle("2. Série " + sourceName());
+		sourceOverviewBorder.setTitle("Résumé " + sourceName() + " (FR)");
+		btnRenumber.setToolTipText(
+				"<html>Recale la numérotation d'une source sur l'autre, d'après les titres qui correspondent<br>"
+						+ "(affichage seulement : ni le CSV ni " + sourceName() + " ne sont modifiés)</html>");
+		for (Column column : Column.values()) {
+			table.getColumnModel().getColumn(table.convertColumnIndexToView(column.ordinal()))
+					.setHeaderValue(column.name(sourceName()));
+		}
+		tableModel.sourceName = sourceName();
+		table.getTableHeader().repaint();
+		comboFilter.repaint();
+		repaint();
 	}
 
 	private void chooseCsv() {
@@ -259,13 +314,13 @@ public class NetflixComparePanel extends JPanel {
 		lblFile.setText(file.getName());
 		lblFile.setToolTipText(file.getAbsolutePath());
 
-		// Autre saison de la même série : la série TVDB choisie est conservée et ses épisodes rechargés ;
+		// Autre saison de la même série : la série choisie est conservée et ses épisodes rechargés ;
 		// sinon il faut chercher la série correspondant au nouveau fichier
 		String showName = showNameFromFile(file);
-		tvdbEpisodes = new ArrayList<>();
+		sourceEpisodes = new ArrayList<>();
 		numberingReference = Reference.ORIGINAL;
 		if (serie != null && showName.equals(csvShowName)) {
-			if (!loadTvdbEpisodes(serie, SwingUtilities.getWindowAncestor(this))) {
+			if (!loadSourceEpisodes(serie, SwingUtilities.getWindowAncestor(this))) {
 				serie = null;
 			}
 		} else {
@@ -292,30 +347,29 @@ public class NetflixComparePanel extends JPanel {
 	}
 
 	private void searchSerie() {
-		TvdbConfig config = TvdbUi.loadConfig(this);
-		if (config == null) {
+		source = SourceUi.createSource(this, dataSource);
+		if (source == null) {
 			return;
 		}
 		Window window = SwingUtilities.getWindowAncestor(this);
-		tvdb = new TvdbEndpoint(config.getApiKey(), config.getPin());
 		String name = textShowName.getText().trim();
-		List<TvdbSerie> series;
+		List<Series> series;
 
-		TvdbUi.setBusy(window, true);
+		SourceUi.setBusy(window, true);
 		try {
-			tvdb.login();
-			series = tvdb.searchByName(name);
+			source.connect();
+			series = source.searchByName(name);
 		} catch (Exception e) {
 			// Erreur réseau, refus du serveur ou réponse illisible : expliquée à l'utilisateur
 			e.printStackTrace();
-			TvdbUi.setBusy(window, false);
-			TvdbUi.showError(this, "Recherche de série", e);
+			SourceUi.setBusy(window, false);
+			SourceUi.showError(this, "Recherche de série", e, source);
 			return;
 		} finally {
 			// Rétabli avant l'ouverture de la fenêtre de recherche, qui est bloquante
-			TvdbUi.setBusy(window, false);
+			SourceUi.setBusy(window, false);
 		}
-		if (series == null) {
+		if (series.isEmpty()) {
 			JOptionPane.showMessageDialog(this, "Aucune série trouvée pour « " + name + " ».", "Recherche de série",
 					JOptionPane.WARNING_MESSAGE);
 			return;
@@ -334,12 +388,12 @@ public class NetflixComparePanel extends JPanel {
 	}
 
 	private void selectSerie() {
-		TvdbSerie selected = searchDialog.getSelectedSerie();
+		Series selected = searchDialog.getSelectedSerie();
 		if (selected == null) {
 			return;
 		}
 		// En cas d'erreur, la fenêtre de recherche reste ouverte : l'utilisateur peut réessayer ou choisir une autre série
-		if (loadTvdbEpisodes(selected, searchDialog)) {
+		if (loadSourceEpisodes(selected, searchDialog)) {
 			serie = selected;
 			refreshComparison();
 			searchDialog.setVisible(false);
@@ -347,26 +401,26 @@ public class NetflixComparePanel extends JPanel {
 	}
 
 	/**
-	 * Charge depuis TVDB les épisodes de la série pour chaque saison du CSV.
+	 * Charge depuis la source les épisodes de la série pour chaque saison du CSV.
 	 *
 	 * @return false si le chargement a échoué (erreur déjà expliquée à l'utilisateur)
 	 */
-	private boolean loadTvdbEpisodes(TvdbSerie selected, Component window) {
-		List<TvdbBasicEpisode> episodes = new ArrayList<>();
-		TvdbUi.setBusy(window, true);
+	private boolean loadSourceEpisodes(Series selected, Component window) {
+		List<Episode> episodes = new ArrayList<>();
+		SourceUi.setBusy(window, true);
 		try {
 			for (int season : csvSeasons()) {
-				episodes.addAll(tvdb.getSeasonEpisodes(selected.id, season));
+				episodes.addAll(source.getSeasonEpisodes(selected, season));
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			TvdbUi.setBusy(window, false);
-			TvdbUi.showError(window, "Chargement des épisodes", e);
+			SourceUi.setBusy(window, false);
+			SourceUi.showError(window, "Chargement des épisodes", e, source);
 			return false;
 		} finally {
-			TvdbUi.setBusy(window, false);
+			SourceUi.setBusy(window, false);
 		}
-		tvdbEpisodes = episodes;
+		sourceEpisodes = episodes;
 		numberingReference = Reference.ORIGINAL;
 		return true;
 	}
@@ -380,10 +434,10 @@ public class NetflixComparePanel extends JPanel {
 	}
 
 	private void refreshComparison() {
-		EpisodeNumbering numbering = EpisodeNumbering.compute(netflixEpisodes, tvdbEpisodes, numberingReference);
-		tableModel.setRows(EpisodeComparison.match(netflixEpisodes, tvdbEpisodes, numbering));
+		EpisodeNumbering numbering = EpisodeNumbering.compute(netflixEpisodes, sourceEpisodes, numberingReference);
+		tableModel.setRows(EpisodeComparison.match(netflixEpisodes, sourceEpisodes, numbering));
 		table.clearSelection();
-		btnRenumber.setEnabled(serie != null && !netflixEpisodes.isEmpty() && !tvdbEpisodes.isEmpty());
+		btnRenumber.setEnabled(serie != null && !netflixEpisodes.isEmpty() && !sourceEpisodes.isEmpty());
 		btnOriginalNumbering.setEnabled(numberingReference != Reference.ORIGINAL);
 		updateSelection();
 		updateStatusBar();
@@ -391,25 +445,26 @@ public class NetflixComparePanel extends JPanel {
 
 	// Demande quelle source garde ses numéros, puis renumérote l'autre en fonction
 	private void renumber() {
-		Object[] options = { "Garder les numéros Netflix", "Garder les numéros TVDB", "Annuler" };
+		Object[] options = { "Garder les numéros Netflix", "Garder les numéros " + sourceName(), "Annuler" };
 		int choice = JOptionPane.showOptionDialog(this,
 				"<html>Quelle source doit garder ses numéros d'épisode ?<br><br>"
 						+ "L'autre source est renumérotée d'après les titres qui correspondent ; "
 						+ "ses épisodes en trop sont placés en fin de saison.<br>"
-						+ "Seul l'affichage change : ni le CSV ni TVDB ne sont modifiés.</html>",
+						+ "Seul l'affichage change : ni le CSV ni " + sourceName() + " ne sont modifiés.</html>",
 				"Renuméroter", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
 		Reference reference;
 		if (choice == 0) {
 			reference = Reference.NETFLIX;
 		} else if (choice == 1) {
-			reference = Reference.TVDB;
+			reference = Reference.SOURCE;
 		} else {
 			return;
 		}
 		// Sans titre commun, rien ne permet de rapprocher les épisodes
-		if (EpisodeNumbering.compute(netflixEpisodes, tvdbEpisodes, reference).getAnchorCount() == 0) {
+		if (EpisodeNumbering.compute(netflixEpisodes, sourceEpisodes, reference).getAnchorCount() == 0) {
 			JOptionPane.showMessageDialog(this,
-					"Aucun titre ne correspond entre Netflix et TVDB (titres français absents de TVDB ?) :\n"
+					"Aucun titre ne correspond entre Netflix et " + sourceName() + " (titres français absents de "
+							+ sourceName() + " ?) :\n"
 							+ "impossible de recaler la numérotation.",
 					"Renuméroter", JOptionPane.INFORMATION_MESSAGE);
 			return;
@@ -427,29 +482,29 @@ public class NetflixComparePanel extends JPanel {
 	private void updateSelection() {
 		EpisodeComparison row = selectedRow();
 		setText(netflixSynopsis, row != null && row.netflix != null ? row.netflix.synopsis : null);
-		setText(tvdbOverview, row != null && row.tvdb != null ? row.tvdb.frenchOverview : null);
+		setText(sourceOverview, row != null && row.source != null ? row.source.frenchOverview : null);
 
-		// Episode présent sur TVDB : page de traduction française ; absent : page d'ajout d'épisodes de la saison
-		boolean tvdbPresent = row != null && row.tvdb != null;
-		btnOpenTvdb.setText(row != null && !tvdbPresent ? "Ajouter sur TVDB" : "Traduire sur TVDB");
-		btnOpenTvdb.setEnabled(row != null && serie != null && serie.slug != null);
-		btnOpenTvdb.setToolTipText(btnOpenTvdb.isEnabled()
-				? "<html>" + tvdbPageFor(row) + "<br>Copie aussi le titre Netflix s'il est à reporter, sinon le résumé</html>"
+		// Episode présent dans la source : page de traduction française ; absent : page d'ajout d'épisodes de la saison
+		boolean sourcePresent = row != null && row.source != null;
+		btnOpenSource.setText(row != null && !sourcePresent ? "Ajouter sur " + sourceName() : "Traduire sur " + sourceName());
+		btnOpenSource.setEnabled(row != null && serie != null && sourcePageFor(row) != null);
+		btnOpenSource.setToolTipText(btnOpenSource.isEnabled()
+				? "<html>" + sourcePageFor(row) + "<br>Copie aussi le titre Netflix s'il est à reporter, sinon le résumé</html>"
 				: null);
 		btnCopyTitle.setEnabled(row != null && row.netflix != null && !row.netflix.title.isEmpty());
 		btnCopySynopsis.setEnabled(row != null && row.netflix != null && !row.netflix.synopsis.isEmpty());
 		lblCopied.setText(" ");
 	}
 
-	private String tvdbPageFor(EpisodeComparison row) {
-		return row.tvdb != null ? TvdbSite.frenchTranslationPage(serie.slug, row.tvdb.id)
-				: TvdbSite.addEpisodesPage(serie.slug, row.season);
+	private String sourcePageFor(EpisodeComparison row) {
+		return row.source != null ? source.frenchTranslationPage(serie, row.source)
+				: source.addEpisodesPage(serie, row.season);
 	}
 
 	// Ouvre la page de saisie dans le navigateur par défaut ; la saisie et la validation restent manuelles
-	private void openOnTvdb() {
+	private void openOnSource() {
 		EpisodeComparison row = selectedRow();
-		String page = tvdbPageFor(row);
+		String page = sourcePageFor(row);
 
 		// Prépare la saisie la plus logique : le titre s'il est à reporter, sinon le résumé
 		if (row.netflix != null) {
@@ -466,7 +521,7 @@ public class NetflixComparePanel extends JPanel {
 			JOptionPane.showMessageDialog(this,
 					"Impossible d'ouvrir le navigateur. Adresse de la page :\n" + page
 							+ "\n\nDétail technique : " + e,
-					"Ouvrir sur TVDB", JOptionPane.ERROR_MESSAGE);
+					"Ouvrir sur " + sourceName(), JOptionPane.ERROR_MESSAGE);
 		}
 	}
 
@@ -480,7 +535,7 @@ public class NetflixComparePanel extends JPanel {
 		area.setCaretPosition(0);
 	}
 
-	// Episodes Netflix lus, et série TVDB choisie avec le nombre de traductions françaises existantes
+	// Episodes Netflix lus, et série choisie avec le nombre de traductions françaises existantes
 	private void updateStatusBar() {
 		StringBuilder status = new StringBuilder();
 		if (netflixEpisodes.isEmpty()) {
@@ -491,13 +546,13 @@ public class NetflixComparePanel extends JPanel {
 					.append(seasons.size() > 1 ? "s " : " ")
 					.append(String.join(", ", seasons.stream().map(String::valueOf).toList()));
 		}
-		status.append("   —   Série TVDB : ");
+		status.append("   —   Série " + sourceName() + " : ");
 		if (serie == null) {
 			status.append("aucune");
 		} else {
 			int frenchNames = 0;
 			int frenchOverviews = 0;
-			for (TvdbBasicEpisode episode : tvdbEpisodes) {
+			for (Episode episode : sourceEpisodes) {
 				if (episode.frenchName != null) {
 					frenchNames++;
 				}
@@ -505,11 +560,11 @@ public class NetflixComparePanel extends JPanel {
 					frenchOverviews++;
 				}
 			}
-			status.append(serie.seriesName);
+			status.append(serie.name);
 			if (serie.firstAired != null && serie.firstAired.length() >= 4) {
 				status.append(" (").append(serie.firstAired.substring(0, 4)).append(")");
 			}
-			status.append(", ").append(tvdbEpisodes.size()).append(" épisode(s) dont ").append(frenchNames)
+			status.append(", ").append(sourceEpisodes.size()).append(" épisode(s) dont ").append(frenchNames)
 					.append(" titre(s) et ").append(frenchOverviews).append(" résumé(s) en français");
 
 			// Bilan de la comparaison
@@ -523,7 +578,7 @@ public class NetflixComparePanel extends JPanel {
 				} else if (comparison.hasPunctuationOnly()) {
 					punctuationOnly++;
 				}
-				if (!comparison.describeMatches().isEmpty()) {
+				if (comparison.hasMatches()) {
 					shifted++;
 				}
 			}
@@ -533,9 +588,9 @@ public class NetflixComparePanel extends JPanel {
 				status.append(", ").append(shifted).append(" décalage(s) de numérotation probable(s)");
 			}
 			if (numberingReference == Reference.NETFLIX) {
-				status.append("   —   Numéros TVDB recalés sur Netflix");
-			} else if (numberingReference == Reference.TVDB) {
-				status.append("   —   Numéros Netflix recalés sur TVDB");
+				status.append("   —   Numéros " + sourceName() + " recalés sur Netflix");
+			} else if (numberingReference == Reference.SOURCE) {
+				status.append("   —   Numéros Netflix recalés sur " + sourceName());
 			}
 		}
 		statusBar.setText(status.toString());
@@ -587,18 +642,22 @@ public class NetflixComparePanel extends JPanel {
 	}
 
 	private static JScrollPane createTitledScrollPane(JTextArea area, String title) {
-		JScrollPane scrollPane = new JScrollPane(area);
-		scrollPane.setBorder(new TitledBorder(title));
-		return scrollPane;
+		return createTitledScrollPane(area, new TitledBorder(title));
 	}
 
+	// Le titre de la bordure peut être modifié ensuite (libellé dépendant de la source)
+	private static JScrollPane createTitledScrollPane(JTextArea area, TitledBorder border) {
+		JScrollPane scrollPane = new JScrollPane(area);
+		scrollPane.setBorder(border);
+		return scrollPane;
+	}
 	/** Lignes affichées dans le tableau */
 	private enum Filter {
 		ALL("Tous les épisodes", r -> true),
-		TO_FIX("Écarts à reporter sur TVDB", r -> r.isToFix() || !r.describeMatches().isEmpty()),
-		WITH_PUNCTUATION("Écarts, ponctuation comprise",
-				r -> r.isToFix() || r.hasPunctuationOnly() || !r.describeMatches().isEmpty());
+		TO_FIX("Écarts à reporter sur %s", r -> r.isToFix() || r.hasMatches()),
+		WITH_PUNCTUATION("Écarts, ponctuation comprise", r -> r.isToFix() || r.hasPunctuationOnly() || r.hasMatches());
 
+		// Libellé ; %s y est remplacé par le nom de la source
 		private final String label;
 		private final RowFilter<ComparisonTableModel, Integer> rowFilter;
 
@@ -612,14 +671,13 @@ public class NetflixComparePanel extends JPanel {
 			};
 		}
 
-		@Override
-		public String toString() {
-			return label;
+		String label(String sourceName) {
+			return String.format(label, sourceName);
 		}
 	}
 
 	/** Résultat de comparaison coloré selon son importance */
-	private static class ResultRenderer extends DefaultTableCellRenderer {
+	private class ResultRenderer extends DefaultTableCellRenderer {
 
 		/** serialUID */
 		private static final long serialVersionUID = 1L;
@@ -628,13 +686,16 @@ public class NetflixComparePanel extends JPanel {
 		public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
 				boolean hasFocus, int row, int column) {
 			super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-			if (!isSelected && value instanceof Result) {
-				setForeground(foreground((Result) value, table.getForeground()));
+			if (value instanceof Result) {
+				setText(((Result) value).label(sourceName()));
+				if (!isSelected) {
+					setForeground(foreground((Result) value, table.getForeground()));
+				}
 			}
 			return this;
 		}
 
-		private static Color foreground(Result result, Color defaultColor) {
+		private Color foreground(Result result, Color defaultColor) {
 			switch (result) {
 			case EPISODE_MISSING:
 			case MISSING:
@@ -653,7 +714,7 @@ public class NetflixComparePanel extends JPanel {
 	}
 
 	/** Correspondance avec un autre numéro, signalée comme un écart à vérifier */
-	private static class MatchRenderer extends DefaultTableCellRenderer {
+	private class MatchRenderer extends DefaultTableCellRenderer {
 
 		/** serialUID */
 		private static final long serialVersionUID = 1L;
@@ -668,35 +729,45 @@ public class NetflixComparePanel extends JPanel {
 			boolean empty = value == null || value.toString().isEmpty();
 			setToolTipText(empty ? null
 					: "<html>Le titre correspond à celui d'un autre numéro : "
-							+ "la numérotation est probablement décalée entre Netflix et TVDB<br>"
+							+ "la numérotation est probablement décalée entre Netflix et " + sourceName() + "<br>"
 							+ "(par exemple un épisode présent d'un seul côté).</html>");
 			return this;
 		}
 	}
 
-	/** Colonnes du tableau de comparaison ; l'ordre de déclaration détermine leur position */
+	/**
+	 * Colonnes du tableau de comparaison ; l'ordre de déclaration détermine leur
+	 * position. Dans les noms, %s est remplacé par le nom de la source ; les
+	 * valeurs reçoivent ce nom en second paramètre.
+	 */
 	private enum Column {
-		SEASON("Saison", 50, Integer.class, r -> r.season),
-		NUMBER("Épisode", 55, Integer.class, r -> r.number),
-		TITLE_RESULT("Titre", 140, Result.class, r -> r.titleResult),
-		OVERVIEW_RESULT("Résumé", 140, Result.class, r -> r.overviewResult),
+		SEASON("Saison", 50, Integer.class, (r, s) -> r.season),
+		NUMBER("Épisode", 55, Integer.class, (r, s) -> r.number),
+		TITLE_RESULT("Titre", 140, Result.class, (r, s) -> r.titleResult),
+		OVERVIEW_RESULT("Résumé", 140, Result.class, (r, s) -> r.overviewResult),
 		MATCH("Autre numéro", 170, String.class, EpisodeComparison::describeMatches),
 		ORIGINAL_NUMBER("N° d'origine", 110, String.class, EpisodeComparison::describeOriginalNumbers),
-		NETFLIX_TITLE("Titre Netflix", 230, String.class, r -> r.netflix != null ? r.netflix.title : null),
-		TVDB_TITLE("Titre TVDB (FR)", 230, String.class, r -> r.tvdb != null ? r.tvdb.frenchName : null),
-		NETFLIX_SYNOPSIS("Résumé Netflix", 300, String.class, r -> r.netflix != null ? r.netflix.synopsis : null),
-		TVDB_OVERVIEW("Résumé TVDB (FR)", 300, String.class, r -> r.tvdb != null ? r.tvdb.frenchOverview : null);
+		NETFLIX_TITLE("Titre Netflix", 230, String.class, (r, s) -> r.netflix != null ? r.netflix.title : null),
+		SOURCE_TITLE("Titre %s (FR)", 230, String.class, (r, s) -> r.source != null ? r.source.frenchName : null),
+		NETFLIX_SYNOPSIS("Résumé Netflix", 300, String.class,
+				(r, s) -> r.netflix != null ? r.netflix.synopsis : null),
+		SOURCE_OVERVIEW("Résumé %s (FR)", 300, String.class,
+				(r, s) -> r.source != null ? r.source.frenchOverview : null);
 
 		private final String name;
 		private final int width;
 		private final Class<?> type; // Integer : tri numérique
-		private final Function<EpisodeComparison, Object> value;
+		private final BiFunction<EpisodeComparison, String, Object> value;
 
-		Column(String name, int width, Class<?> type, Function<EpisodeComparison, Object> value) {
+		Column(String name, int width, Class<?> type, BiFunction<EpisodeComparison, String, Object> value) {
 			this.name = name;
 			this.width = width;
 			this.type = type;
 			this.value = value;
+		}
+
+		String name(String sourceName) {
+			return String.format(name, sourceName);
 		}
 	}
 
@@ -706,6 +777,8 @@ public class NetflixComparePanel extends JPanel {
 		private static final long serialVersionUID = 1L;
 
 		private List<EpisodeComparison> rows = new ArrayList<>();
+		// Nom de la source, repris dans les noms de colonnes et certaines valeurs
+		private String sourceName = "";
 
 		void setRows(List<EpisodeComparison> rows) {
 			this.rows = rows;
@@ -728,7 +801,7 @@ public class NetflixComparePanel extends JPanel {
 
 		@Override
 		public String getColumnName(int col) {
-			return Column.values()[col].name;
+			return Column.values()[col].name(sourceName);
 		}
 
 		@Override
@@ -738,7 +811,7 @@ public class NetflixComparePanel extends JPanel {
 
 		@Override
 		public Object getValueAt(int row, int col) {
-			return Column.values()[col].value.apply(rows.get(row));
+			return Column.values()[col].value.apply(rows.get(row), sourceName);
 		}
 	}
 }

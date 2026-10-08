@@ -1,4 +1,4 @@
-package api;
+package api.tvdb;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -10,16 +10,33 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
-public class JSONUtils {
+import api.Episode;
+import api.Series;
+
+/**
+ * Lecture des réponses JSON de l'API TVDB v4.
+ */
+final class TvdbJson {
 
 	/* Authentication API parameters */
 	private static final String LOGIN_API_KEY = "apikey";
 	private static final String LOGIN_PIN = "pin";
 	private static final String LOGIN_TOKEN = "token";
 
+	/** Une page de la liste des épisodes */
+	static class EpisodesPage {
+		// Episodes de la page, par identifiant
+		final Map<Long, Episode> episodes = new HashMap<>();
+		// Adresse de la page suivante, null si c'est la dernière
+		String next;
+	}
+
+	private TvdbJson() {
+	}
+
 	// JSONObject (json-simple) hérite d'un HashMap non typé
 	@SuppressWarnings("unchecked")
-	public static JSONObject getLogin(String apiKey, String pin) {
+	static JSONObject getLogin(String apiKey, String pin) {
 		JSONObject loginObject = new JSONObject();
 		loginObject.put(LOGIN_API_KEY, apiKey);
 		if (pin != null) {
@@ -28,7 +45,7 @@ public class JSONUtils {
 		return loginObject;
 	}
 
-	public static String extractToken(String jsonResponse) throws ParseException {
+	static String extractToken(String jsonResponse) throws ParseException {
 		JSONObject responseObject = (JSONObject) new JSONParser().parse(jsonResponse);
 		JSONObject data = (JSONObject) responseObject.get("data");
 		return (String) data.get(LOGIN_TOKEN);
@@ -46,21 +63,18 @@ public class JSONUtils {
 		return defaultValue;
 	}
 
-	public static List<TvdbSerie> extractSeries(String response, String lang) throws ParseException {
-		Map<Long, TvdbSerie> series = new HashMap<>();
+	static List<Series> extractSeries(String response, String lang) throws ParseException {
+		Map<Long, Series> series = new HashMap<>();
 		JSONObject seriesArray = (JSONObject) new JSONParser().parse(response);
 		if (seriesArray != null && seriesArray.get("data") != null) {
 			for (Object serie : (JSONArray) seriesArray.get("data")) {
 				JSONObject serieJson = (JSONObject) serie;
-				TvdbSerie s = new TvdbSerie();
-				JSONArray aliases = (JSONArray) serieJson.get("aliases");
-				s.aliases = aliases != null ? aliases.toArray() : new Object[0];
-				s.banner = (String) serieJson.get("image_url");
+				Series s = new Series();
 				s.firstAired = (String) serieJson.get("first_air_time");
 				s.id = Long.valueOf((String) serieJson.get("tvdb_id"));
 				s.network = (String) serieJson.get("network");
 				s.overview = translated(serieJson, "overviews", lang, (String) serieJson.get("overview"));
-				s.seriesName = translated(serieJson, "translations", lang, (String) serieJson.get("name"));
+				s.name = translated(serieJson, "translations", lang, (String) serieJson.get("name"));
 				s.status = (String) serieJson.get("status");
 				s.slug = (String) serieJson.get("slug");
 				series.put(s.id, s);
@@ -78,46 +92,27 @@ public class JSONUtils {
 		return episodes != null ? episodes : new JSONArray();
 	}
 
-	public static TvdbSeriesEpisodes extractEpisodes(String frenchResponse, String originalResponse)
-			throws ParseException {
-		TvdbSeriesEpisodes episodes = new TvdbSeriesEpisodes();
-		episodes.tvdbBasicEpisodes = new HashMap<>();
-		episodes.tvdblinks = new TvdbLink();
-
+	/** Episodes d'une page de la liste dans la langue d'origine ; page vide si la réponse est null */
+	static EpisodesPage extractEpisodes(String originalResponse) throws ParseException {
+		EpisodesPage page = new EpisodesPage();
 		if (originalResponse == null) {
-			return episodes;
+			return page;
 		}
 
 		JSONObject originalEpisodesArray = (JSONObject) new JSONParser().parse(originalResponse);
-
 		for (Object episode : getEpisodesArray(originalEpisodesArray)) {
 			JSONObject episodeJson = (JSONObject) episode;
-			TvdbBasicEpisode tvdbBasicEpisode = new TvdbBasicEpisode();
-			tvdbBasicEpisode.absoluteNumber = (Long) episodeJson.get("absoluteNumber");
-			tvdbBasicEpisode.airedEpisodeNumber = (Long) episodeJson.get("number");
-			tvdbBasicEpisode.airedSeason = (Long) episodeJson.get("seasonNumber");
-			tvdbBasicEpisode.episodeName = (String) episodeJson.get("name");
-			tvdbBasicEpisode.firstAired = (String) episodeJson.get("aired");
-			tvdbBasicEpisode.id = (Long) episodeJson.get("id");
-			tvdbBasicEpisode.lastUpdated = (String) episodeJson.get("lastUpdated");
-			tvdbBasicEpisode.overview = (String) episodeJson.get("overview");
-			episodes.tvdbBasicEpisodes.put(tvdbBasicEpisode.id, tvdbBasicEpisode);
+			Episode e = new Episode();
+			e.number = (Long) episodeJson.get("number");
+			e.season = (Long) episodeJson.get("seasonNumber");
+			e.name = (String) episodeJson.get("name");
+			e.firstAired = (String) episodeJson.get("aired");
+			e.id = (Long) episodeJson.get("id");
+			e.overview = (String) episodeJson.get("overview");
+			page.episodes.put(e.id, e);
 		}
-
-		if (frenchResponse != null) {
-			addFrenchTranslations(episodes, frenchResponse);
-		}
-
-		JSONObject linksJson = (JSONObject) originalEpisodesArray.get("links");
-		if (linksJson != null) {
-			episodes.tvdblinks.prev = (String) linksJson.get("prev");
-			episodes.tvdblinks.self = (String) linksJson.get("self");
-			episodes.tvdblinks.next = (String) linksJson.get("next");
-			episodes.tvdblinks.totalItems = (Long) linksJson.get("total_items");
-			episodes.tvdblinks.pageSize = (Long) linksJson.get("page_size");
-		}
-
-		return episodes;
+		page.next = nextPage(originalEpisodesArray);
+		return page;
 	}
 
 	/**
@@ -127,28 +122,31 @@ public class JSONUtils {
 	 *
 	 * @return l'adresse de la page suivante, null si c'est la dernière
 	 */
-	public static String addFrenchTranslations(TvdbSeriesEpisodes episodes, String frenchResponse)
-			throws ParseException {
+	static String addFrenchTranslations(Map<Long, Episode> episodes, String frenchResponse) throws ParseException {
 		JSONObject frenchEpisodesArray = (JSONObject) new JSONParser().parse(frenchResponse);
 		for (Object episode : getEpisodesArray(frenchEpisodesArray)) {
 			JSONObject episodeJson = (JSONObject) episode;
-			TvdbBasicEpisode tvdbBasicEpisode = episodes.tvdbBasicEpisodes.get((Long) episodeJson.get("id"));
-			if (tvdbBasicEpisode == null) {
+			Episode e = episodes.get((Long) episodeJson.get("id"));
+			if (e == null) {
 				continue;
 			}
 			// L'API renvoie null quand la traduction n'existe pas
 			String episodeName = (String) episodeJson.get("name");
 			String overview = (String) episodeJson.get("overview");
-			tvdbBasicEpisode.frenchName = episodeName;
-			tvdbBasicEpisode.frenchOverview = overview;
+			e.frenchName = episodeName;
+			e.frenchOverview = overview;
 			if (episodeName != null) {
-				tvdbBasicEpisode.episodeName = episodeName;
+				e.name = episodeName;
 			}
 			if (overview != null) {
-				tvdbBasicEpisode.overview = overview;
+				e.overview = overview;
 			}
 		}
-		JSONObject linksJson = (JSONObject) frenchEpisodesArray.get("links");
+		return nextPage(frenchEpisodesArray);
+	}
+
+	private static String nextPage(JSONObject response) {
+		JSONObject linksJson = (JSONObject) response.get("links");
 		return linksJson != null ? (String) linksJson.get("next") : null;
 	}
 }

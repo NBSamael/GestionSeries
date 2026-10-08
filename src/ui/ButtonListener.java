@@ -19,20 +19,18 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
 
-import api.TvdbBasicEpisode;
-import api.TvdbConfig;
-import api.TvdbEndpoint;
-import api.TvdbSerie;
-import api.TvdbSeriesEpisodes;
+import api.DataSource;
+import api.Episode;
+import api.Series;
 import data.FileItem;
 import data.SeasonReading;
 import data.ShowInformations;
 
 public class ButtonListener implements java.awt.event.ActionListener, ChangeListener, DocumentListener {
-	private List<TvdbSerie> series;
-	private TvdbEndpoint tvdb;
+	private List<Series> series;
+	private DataSource source;
 
-	private TvdbSeriesEpisodes episodes;
+	private List<Episode> episodes;
 	private String nomSerie = null;
 	private JTable table;
 	private boolean directoryScanned = false;
@@ -42,6 +40,26 @@ public class ButtonListener implements java.awt.event.ActionListener, ChangeList
 	public ButtonListener(Application app) {
 		super();
 		this.app = app;
+	}
+
+	/**
+	 * Oublie la série choisie, ses épisodes et les résultats déjà affichés
+	 * (changement de source) : il faut rechercher la série dans la nouvelle source
+	 * avant de traiter les fichiers. Les fichiers scannés et le nom saisi sont
+	 * conservés.
+	 */
+	public void resetSerie() {
+		series = null;
+		source = null;
+		episodes = null;
+		nomSerie = null;
+		app.currentSerie = null;
+		app.btnTraitementDesDonnes.setEnabled(false);
+		app.btnNewName.setEnabled(false);
+		app.btnRenommer.setEnabled(false);
+		// Les titres et nouveaux noms venaient de l'ancienne source ; la colorisation reprend comme après un scan
+		app.colorization = directoryScanned;
+		app.itemList.clearProcessing();
 	}
 
 	@Override
@@ -131,29 +149,28 @@ public class ButtonListener implements java.awt.event.ActionListener, ChangeList
 	}
 
 	private void rechercheSerie() {
-		TvdbConfig config = TvdbUi.loadConfig(app.frmGestionSeries);
-		if (config == null) {
+		source = SourceUi.createSource(app.frmGestionSeries, app.dataSource);
+		if (source == null) {
 			return;
 		}
-		tvdb = new TvdbEndpoint(config.getApiKey(), config.getPin());
 		series = null;
 
-		TvdbUi.setBusy(app.frmGestionSeries, true);
+		SourceUi.setBusy(app.frmGestionSeries, true);
 		try {
-			tvdb.login();
+			source.connect();
 			String NameSerie = app.textShowName.getText();
-			series = tvdb.searchByName(NameSerie);
+			series = source.searchByName(NameSerie);
 		} catch (Exception e1) {
 			// Erreur réseau, refus du serveur ou réponse illisible : expliquée à l'utilisateur
 			e1.printStackTrace();
-			TvdbUi.setBusy(app.frmGestionSeries, false);
-			TvdbUi.showError(app.frmGestionSeries, "Recherche de série", e1);
+			SourceUi.setBusy(app.frmGestionSeries, false);
+			SourceUi.showError(app.frmGestionSeries, "Recherche de série", e1, source);
 			return;
 		} finally {
 			// Rétabli avant l'ouverture de la fenêtre de recherche, qui est bloquante
-			TvdbUi.setBusy(app.frmGestionSeries, false);
+			SourceUi.setBusy(app.frmGestionSeries, false);
 		}
-		if (series != null) {
+		if (!series.isEmpty()) {
 			System.out.println(app.textShowName.getText());
 
 			app.btnTraitementDesDonnes.setEnabled(true);
@@ -168,28 +185,27 @@ public class ButtonListener implements java.awt.event.ActionListener, ChangeList
 
 	private void rechercheEpisode() {
 
-		TvdbSerie s = app.searchDialog.getSelectedSerie();
+		Series s = app.searchDialog.getSelectedSerie();
 		if (s == null) {
 			return;
 		}
-		TvdbUi.setBusy(app.searchDialog, true);
+		SourceUi.setBusy(app.searchDialog, true);
 		try {
-			episodes = tvdb.getEpisodesList(s.id);
-			nomSerie = s.seriesName;
+			episodes = source.getAllEpisodes(s);
+			nomSerie = s.name;
 			app.currentSerie = s;
 			app.updateStatusBar();
-			for (TvdbBasicEpisode tvdbBasicEpisode : episodes.tvdbBasicEpisodes.values()) {
-				System.out.println("S" + tvdbBasicEpisode.airedSeason + "E"
-						+ tvdbBasicEpisode.airedEpisodeNumber + " : " + tvdbBasicEpisode.episodeName);
+			for (Episode episode : episodes) {
+				System.out.println("S" + episode.season + "E" + episode.number + " : " + episode.name);
 			}
 		} catch (Exception e1) {
 			// La fenêtre de recherche reste ouverte : l'utilisateur peut réessayer ou choisir une autre série
 			e1.printStackTrace();
-			TvdbUi.setBusy(app.searchDialog, false);
-			TvdbUi.showError(app.searchDialog, "Chargement des épisodes", e1);
+			SourceUi.setBusy(app.searchDialog, false);
+			SourceUi.showError(app.searchDialog, "Chargement des épisodes", e1, source);
 			return;
 		} finally {
-			TvdbUi.setBusy(app.searchDialog, false);
+			SourceUi.setBusy(app.searchDialog, false);
 		}
 
 		app.searchDialog.setVisible(false);
@@ -283,7 +299,8 @@ public class ButtonListener implements java.awt.event.ActionListener, ChangeList
 
 	private void scanDirectory() {
 		JFileChooser directoryChooser = new JFileChooser();
-		directoryChooser.setCurrentDirectory(new java.io.File("Z:\\DL\\Temp"));
+		// Dossier des préférences ; dossier par défaut du système si aucun n'est choisi (ou s'il n'existe plus)
+		directoryChooser.setCurrentDirectory(Settings.getScanDirectory());
 		directoryChooser.setDialogTitle("Sélectionnez un dossier");
 		directoryChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 		directoryChooser.setAcceptAllFileFilterUsed(false);

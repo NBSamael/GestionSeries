@@ -4,8 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import api.TvdbBasicEpisode;
-import api.TvdbSeriesEpisodes;
+import api.Episode;
 import ui.Application;
 import ui.FileListTableModel;
 
@@ -83,7 +82,7 @@ public class FileItemList extends ArrayList<FileItem> {
 	 * @return la liste des erreurs rencontrées (vide si tout s'est bien passé) ;
 	 *         les fichiers en erreur passent au statut ERREUR
 	 */
-	public List<String> completeData(ShowInformations showInfos, TvdbSeriesEpisodes episodes) {
+	public List<String> completeData(ShowInformations showInfos, List<Episode> episodes) {
 		List<String> errors = new ArrayList<>();
 		for (FileItem fileItem : this) {
 			if (!fileItem.selected) {
@@ -124,7 +123,7 @@ public class FileItemList extends ArrayList<FileItem> {
 			fileItem.status = FileItem.Status.OK;
 			fileItem.errorMessage = null;
 
-			// Les numéros sont comparés à ceux de TVDB en tant que nombres,
+			// Les numéros sont comparés à ceux de la source en tant que nombres,
 			// indépendamment de leur mise en forme
 			int seasonNumber = Integer.parseInt(season);
 			int episodeNumber = Integer.parseInt(episode) + showInfos.offset;
@@ -138,17 +137,17 @@ public class FileItemList extends ArrayList<FileItem> {
 			fileItem.episode = episode;
 			System.out.println("Saison : " + season + " Episode : " + episode);
 
-			for (TvdbBasicEpisode tvdbBasicEpisode : episodes.tvdbBasicEpisodes.values()) {
-				// Episodes sans numéro dans TVDB (épisodes spéciaux mal renseignés, etc.)
-				if (tvdbBasicEpisode.airedSeason == null || tvdbBasicEpisode.airedEpisodeNumber == null) {
+			for (Episode sourceEpisode : episodes) {
+				// Episodes sans numéro dans la source (épisodes spéciaux mal renseignés, etc.)
+				if (sourceEpisode.season == null || sourceEpisode.number == null) {
 					continue;
 				}
-				System.out.println("  Saison : " + tvdbBasicEpisode.airedSeason + " Episode : "
-						+ tvdbBasicEpisode.airedEpisodeNumber);
-				if (tvdbBasicEpisode.airedSeason == seasonNumber
-						&& tvdbBasicEpisode.airedEpisodeNumber == episodeNumber) {
-					System.out.println("Nom épisode : " + tvdbBasicEpisode.episodeName);
-					fileItem.episodeName = tvdbBasicEpisode.episodeName;
+				System.out.println("  Saison : " + sourceEpisode.season + " Episode : "
+						+ sourceEpisode.number);
+				if (sourceEpisode.season == seasonNumber
+						&& sourceEpisode.number == episodeNumber) {
+					System.out.println("Nom épisode : " + sourceEpisode.name);
+					fileItem.episodeName = sourceEpisode.name;
 				}
 			}
 		}
@@ -191,6 +190,23 @@ public class FileItemList extends ArrayList<FileItem> {
 	@Override
 	public void clear() {
 		super.clear();
+		tableModel.fireTableDataChanged();
+	}
+
+	/**
+	 * Efface les résultats du traitement (numéros lus, titres, nouveaux noms,
+	 * erreurs) : les fichiers reviennent à leur état d'après le scan, leur
+	 * sélection étant conservée.
+	 */
+	public void clearProcessing() {
+		for (FileItem fileItem : this) {
+			fileItem.status = FileItem.Status.OK;
+			fileItem.errorMessage = null;
+			fileItem.season = null;
+			fileItem.episode = null;
+			fileItem.episodeName = null;
+			fileItem.treatedName = null;
+		}
 		tableModel.fireTableDataChanged();
 	}
 

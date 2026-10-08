@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Properties;
 
 /**
- * Données de connexion à TVDB, lues dans un fichier de configuration
+ * Données de connexion aux sources de données, lues dans un fichier de configuration
  * (gestionseries.properties) qui n'est pas versionné.
  *
  * Le fichier est cherché, dans l'ordre :
@@ -23,13 +23,14 @@ import java.util.Properties;
  * <li>dans le dossier personnel de l'utilisateur.</li>
  * </ol>
  */
-public final class TvdbConfig {
+public final class ApiConfig {
 
 	public static final String FILE_NAME = "gestionseries.properties";
 	private static final String PATH_PROPERTY = "gestionseries.config";
 
-	private static final String KEY_API_KEY = "tvdb.apikey";
-	private static final String KEY_PIN = "tvdb.pin";
+	private static final String KEY_TVDB_API_KEY = "tvdb.apikey";
+	private static final String KEY_TVDB_PIN = "tvdb.pin";
+	private static final String KEY_TMDB_API_KEY = "tmdb.apikey";
 
 	/** Configuration absente ou incomplète ; le message explique comment la corriger */
 	public static class ConfigException extends Exception {
@@ -42,25 +43,45 @@ public final class TvdbConfig {
 		}
 	}
 
-	private final String apiKey;
-	private final String pin;
+	// Fichier lu, cité dans les messages d'erreur
+	private final Path path;
+	// Valeurs lues, null si absentes : seule la clé de la source choisie est obligatoire
+	private final String tvdbApiKey;
+	private final String tvdbPin;
+	private final String tmdbApiKey;
 
-	private TvdbConfig(String apiKey, String pin) {
-		this.apiKey = apiKey;
-		this.pin = pin;
+	private ApiConfig(Path path, String tvdbApiKey, String tvdbPin, String tmdbApiKey) {
+		this.path = path;
+		this.tvdbApiKey = tvdbApiKey;
+		this.tvdbPin = tvdbPin;
+		this.tmdbApiKey = tmdbApiKey;
 	}
 
-	public String getApiKey() {
-		return apiKey;
+	/** Clé API TVDB ; erreur expliquant comment la renseigner si elle est absente */
+	public String requireTvdbApiKey() throws ConfigException {
+		return require(tvdbApiKey, KEY_TVDB_API_KEY, "TVDB");
+	}
+
+	/** Clé API TMDB ; erreur expliquant comment la renseigner si elle est absente */
+	public String requireTmdbApiKey() throws ConfigException {
+		return require(tmdbApiKey, KEY_TMDB_API_KEY, "TMDB");
+	}
+
+	private String require(String value, String key, String source) throws ConfigException {
+		if (value == null) {
+			throw new ConfigException("La clé API " + source + " (" + key + ") n'est pas renseignée dans "
+					+ path.toAbsolutePath(), null);
+		}
+		return value;
 	}
 
 	/** PIN d'abonné, uniquement nécessaire pour les clés "user-supported" ; null si absent */
-	public String getPin() {
-		return pin;
+	public String getTvdbPin() {
+		return tvdbPin;
 	}
 
 	/** Lit la configuration ; à appeler à chaque utilisation pour prendre en compte une correction du fichier */
-	public static TvdbConfig load() throws ConfigException {
+	public static ApiConfig load() throws ConfigException {
 		List<Path> candidates = getCandidatePaths();
 		for (Path path : candidates) {
 			if (Files.isRegularFile(path)) {
@@ -75,7 +96,7 @@ public final class TvdbConfig {
 		throw new ConfigException(message.toString(), null);
 	}
 
-	private static TvdbConfig load(Path path) throws ConfigException {
+	private static ApiConfig load(Path path) throws ConfigException {
 		Properties properties = new Properties();
 		try (Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
 			properties.load(reader);
@@ -83,12 +104,8 @@ public final class TvdbConfig {
 			throw new ConfigException("Impossible de lire le fichier de configuration " + path.toAbsolutePath()
 					+ " : " + e.getMessage(), e);
 		}
-		String apiKey = trimToNull(properties.getProperty(KEY_API_KEY));
-		if (apiKey == null) {
-			throw new ConfigException("La clé API TVDB (" + KEY_API_KEY + ") n'est pas renseignée dans "
-					+ path.toAbsolutePath(), null);
-		}
-		return new TvdbConfig(apiKey, trimToNull(properties.getProperty(KEY_PIN)));
+		return new ApiConfig(path, trimToNull(properties.getProperty(KEY_TVDB_API_KEY)),
+				trimToNull(properties.getProperty(KEY_TVDB_PIN)), trimToNull(properties.getProperty(KEY_TMDB_API_KEY)));
 	}
 
 	private static List<Path> getCandidatePaths() {

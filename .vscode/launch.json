@@ -16,7 +16,16 @@
 			"type": "java",
 			"name": "Test API TVDB",
 			"request": "launch",
-			"mainClass": "api.TvdbTest",
+			"mainClass": "api.tvdb.TvdbTest",
+			"projectName": "GestionSeries",
+			"vmArgs": "-Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8",
+			"console": "internalConsole"
+		},
+		{
+			"type": "java",
+			"name": "Test API TMDB",
+			"request": "launch",
+			"mainClass": "api.tmdb.TmdbTest",
 			"projectName": "GestionSeries",
 			"vmArgs": "-Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8",
 			"console": "internalConsole"
